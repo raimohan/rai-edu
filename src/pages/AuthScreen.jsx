@@ -1,11 +1,8 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { Mail, Lock } from 'lucide-react'; // Keeping these for consistency, though not used in new design
+import { Mail, Lock } from 'lucide-react'; // Keeping these for consistency, though not actively used in new design
 import {
-    createUserWithEmailAndPassword, // Not used in new phone auth flow
-    signInWithEmailAndPassword,     // Not used in new phone auth flow
     GoogleAuthProvider,
     signInWithPopup,
-    PhoneAuthProvider, // For phone authentication
     RecaptchaVerifier, // For reCAPTCHA verification
     signInWithPhoneNumber, // For sending OTP
     onAuthStateChanged // Good for debugging auth state changes
@@ -144,8 +141,8 @@ const AuthScreen = () => {
                 return;
             }
 
+            // For invisible reCAPTCHA, we need to manually trigger verification if not already done
             if (window.recaptchaVerifier.size === 'invisible' && !recaptchaResolved) {
-                 // For invisible reCAPTCHA, we need to manually trigger verification if not already done
                  await window.recaptchaVerifier.verify();
             }
 
@@ -315,28 +312,21 @@ const AuthScreen = () => {
 
         createBubbles();
         document.addEventListener('click', createRipple);
-        document.addEventListener('touchstart', (e) => {
+        // Corrected touch handler for cleanup
+        const touchRippleHandler = (e) => {
             Array.from(e.touches).forEach(touch => {
                 createRipple({
                     clientX: touch.clientX,
                     clientY: touch.clientY
                 });
             });
-        });
+        };
+        document.addEventListener('touchstart', touchRippleHandler);
 
         // Cleanup event listeners on component unmount
         return () => {
             document.removeEventListener('click', createRipple);
-            document.removeEventListener('touchstart', createRipple); // Removed the incorrect usage, should be specific handler
-            // Re-adding a correct touch handler for cleanup
-            document.removeEventListener('touchstart', (e) => {
-                Array.from(e.touches).forEach(touch => {
-                    createRipple({
-                        clientX: touch.clientX,
-                        clientY: touch.clientY
-                    });
-                });
-            });
+            document.removeEventListener('touchstart', touchRippleHandler);
         };
     }, []); // Empty dependency array means this runs once on mount
 
@@ -358,131 +348,8 @@ const AuthScreen = () => {
     // --- Render Component ---
     return (
         <div className="flex items-center justify-center min-h-screen p-4 overflow-hidden relative">
-            {/* Custom Styles - CONSIDER MOVING TO index.css */}
-            <style jsx>{`
-                /* Font imports should ideally be in public/index.html or global CSS */
-                @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                @import url('https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css');
-
-                /* Tailwind config extension should be in tailwind.config.js */
-                /*
-                tailwind.config={
-                    theme:{
-                        extend:{
-                            colors:{
-                                primary:'#4F46E5',
-                                secondary:'#8B5CF6'
-                            },
-                            borderRadius:{
-                                'none':'0px',
-                                'sm':'4px',
-                                DEFAULT:'8px',
-                                'md':'12px',
-                                'lg':'16px',
-                                'xl':'20px',
-                                '2xl':'24px',
-                                '3xl':'32px',
-                                'full':'9999px',
-                                'button':'8px'
-                            }
-                        }
-                    }
-                }
-                */
-
-                body {
-                    font-family: 'Inter', sans-serif;
-                    min-height: 100vh;
-                    position: relative;
-                    overflow: hidden;
-                }
-                .animated-background {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    z-index: -1;
-                    overflow: hidden;
-                }
-                .video-background {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    z-index: -2;
-                    opacity: 0.15;
-                }
-                .overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: linear-gradient(135deg, rgba(235, 245, 255, 0.97) 0%, rgba(225, 240, 255, 0.97) 100%);
-                    z-index: -1;
-                }
-                .floating-bubble {
-                    position: absolute;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 50%;
-                    pointer-events: none;
-                    animation: float 20s linear infinite;
-                }
-                .ripple {
-                    position: absolute;
-                    border-radius: 50%;
-                    transform: scale(0);
-                    animation: ripple 0.8s linear;
-                    background: rgba(79, 70, 229, 0.1);
-                }
-                @keyframes float {
-                    0% {
-                        transform: translateY(100%) translateX(-50%);
-                        opacity: 0;
-                    }
-                    50% {
-                        opacity: 0.8;
-                    }
-                    100% {
-                        transform: translateY(-100vh) translateX(50%);
-                        opacity: 0;
-                    }
-                }
-                @keyframes ripple {
-                    to {
-                        transform: scale(4);
-                        opacity: 0;
-                    }
-                }
-                .glass-container {
-                    background: rgba(255, 255, 255, 0.7);
-                    backdrop-filter: blur(10px);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                }
-                .input-container {
-                    position: relative;
-                }
-                .input-container input {
-                    padding-left: 4rem;
-                }
-                .country-code {
-                    position: absolute;
-                    left: 1rem;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    display: flex;
-                    align-items: center;
-                    gap: 0.25rem;
-                }
-                /* OTP container visibility handled by state now, not 'display: none/block' */
-            `}</style>
-
             {/* Background elements */}
-            <video autoplay loop muted playsinline className="video-background">
+            <video autoPlay loop muted playsInline className="video-background">
                 <source src="https://assets.codepen.io/3364143/7btrrd.mp4" type="video/mp4" />
             </video>
             <div className="overlay"></div>
@@ -490,4 +357,85 @@ const AuthScreen = () => {
             {/* reCAPTCHA container - invisible but necessary for Firebase Phone Auth */}
             <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
 
-            <div className="glass-container shadow-lg
+            <div className="glass-container shadow-lg rounded-2xl w-full max-w-md p-8 mx-auto relative z-10">
+                <div className="text-center mb-8">
+                    <div className="w-20 h-20 mx-auto mb-4">
+                        <img id="logoImage" src="" alt="Logo" className="w-full h-full object-contain" />
+                    </div>
+                    <h1 className="text-2xl font-semibold text-gray-800">Welcome Back!</h1>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Phone Number Input */}
+                    <div className="flex gap-2">
+                        <button className="flex items-center gap-2 px-3 py-3 border-none bg-white rounded focus:ring-2 focus:ring-primary/20 focus:outline-none shadow-sm whitespace-nowrap">
+                            <div className="w-6 h-6 flex items-center justify-center">
+                                <img src="https://readdy.ai/api/search-image?query=Indian%20flag%2C%20minimalist%20design%2C%20flat%20style%2C%20clean%20edges%2C%20simplified%20emblem%2C%20orange%20white%20and%20green%20colors%2C%20national%20symbol&width=24&height=24&seq=1&orientation=squarish" alt="Indian flag" className="w-5 h-auto" />
+                            </div>
+                            <span className="text-gray-700">+91</span>
+                            <div className="w-4 h-4 flex items-center justify-center">
+                                <i className="ri-arrow-down-s-line"></i>
+                            </div>
+                        </button>
+                        <input
+                            type="tel"
+                            id="phone"
+                            className="flex-1 px-4 py-3 border-none bg-white rounded focus:ring-2 focus:ring-primary/20 focus:outline-none shadow-sm"
+                            placeholder="Enter phone number"
+                            value={phoneNumber}
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/[^0-9]/g, ''); // Only digits
+                                setPhoneNumber(value.slice(0, 10)); // Max 10 digits
+                            }}
+                            disabled={loading || showOtpFields} // Disable if loading or OTP sent
+                        />
+                    </div>
+
+                    {/* OTP Container - Conditionally rendered */}
+                    {showOtpFields && (
+                        <div id="otpContainer" className="space-y-4">
+                            <p className="text-sm text-gray-600">We've sent a 6-digit OTP to your phone number</p>
+                            <div className="flex gap-2 justify-between">
+                                {otp.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        id={`otp-input-${index}`}
+                                        type="text"
+                                        maxLength="1"
+                                        className="w-full aspect-square text-center text-xl border-none bg-white rounded focus:ring-2 focus:ring-primary/20 focus:outline-none shadow-sm"
+                                        value={digit}
+                                        onChange={(e) => handleOtpChange(e, index)}
+                                        onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                                        disabled={loading}
+                                    />
+                                ))}
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-500">Didn't receive OTP?</span>
+                                <button
+                                    id="resendOtp"
+                                    onClick={handleSendOtp}
+                                    className={`text-sm font-medium ${resendTimer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-primary hover:text-primary/80'} whitespace-nowrap`}
+                                    disabled={resendTimer > 0 || loading}
+                                >
+                                    {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                                </button>
+                            </div>
+                            <ThemedButton
+                                id="verifyOtp"
+                                onClick={handleVerifyOtp}
+                                className="w-full"
+                                disabled={loading || otp.join('').length !== 6} // Disable if OTP not full or loading
+                            >
+                                {loading ? 'Verifying...' : 'Verify OTP'}
+                            </ThemedButton>
+                        </div>
+                    )}
+
+                    {/* Send OTP button - Conditionally rendered */}
+                    {!showOtpFields && (
+                        <ThemedButton
+                            id="sendOtp"
+                            onClick={handleSendOtp}
+                            className="w-full"
+                            disabled=}
