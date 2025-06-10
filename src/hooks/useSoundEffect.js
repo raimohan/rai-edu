@@ -24,8 +24,11 @@ export const useSoundEffect = () => {
     }, []);
 
     const playClick = () => {
-        if (clickSynth.current) {
-            Tone.start();
+        if (clickSynth.current && Tone.context.state !== 'running') {
+            Tone.context.resume().then(() => {
+                clickSynth.current.triggerAttackRelease("C5", "16n");
+            });
+        } else if (clickSynth.current) {
             clickSynth.current.triggerAttackRelease("C5", "16n");
         }
     };
