@@ -19,10 +19,12 @@ export default {
       pattern: /ring-(blue|red|gray|green|yellow|purple|pink)-(100|400|500)/,
     },
     {
+      // Corrected pattern for peer-checked:bg-
       pattern: /peer-checked:bg-(blue|red|gray|green|yellow|purple|pink)-500/,
     },
     {
-        pattern: /peer-checked:ring-(blue|red|gray|green|yellow|purple|pink)-400/,
+      // Corrected pattern for peer-checked:ring-
+      pattern: /peer-checked:ring-(blue|red|gray|green|yellow|purple|pink)-400/,
     },
     'bg-gray-800', // For black theme button
   ],
@@ -30,8 +32,6 @@ export default {
     extend: {
       fontFamily: {
         poppins: ['Poppins', 'sans-serif'],
-        // 'Inter' font is used in AuthScreen, ensure it's loaded via public/index.html
-        // You might consider adding 'inter: ['Inter', 'sans-serif']' here if you plan to use it as a Tailwind utility class
       },
       // Custom colors from your new AuthScreen design
       colors: {
