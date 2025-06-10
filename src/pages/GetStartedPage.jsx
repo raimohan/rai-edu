@@ -14,15 +14,17 @@ const GetStartedPage = () => {
                      <svg className="w-12 h-12 md:w-16 md:h-16 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253" />
                     </svg>
-                    <h1 className="text-5xl md:text-7xl font-bold text-gray-800 dark:text-white">
+                    {/* Yahan naya font 'Lobster' apply kiya gaya hai */}
+                    <h1 className="text-6xl md:text-8xl font-lobster text-gray-800 dark:text-white">
                         RaiEdu
                     </h1>
                 </div>
-                <p className="text-lg md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl">
-                    Aapki Padhai ka Naya Saathi. Yahan aap notes, classes, aur community ke saath behtar tareeke se seekh sakte hain.
+                 {/* Yahan naya signature font 'Dancing Script' apply kiya gaya hai */}
+                <p className="text-2xl md:text-3xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl font-dancing-script">
+                    Aapki Padhai ka Naya Saathi.
                 </p>
                 <Link to="/login">
-                    <button className="px-10 py-4 text-lg font-semibold text-white bg-blue-500 rounded-full shadow-lg hover:bg-blue-600 transform hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-400">
+                    <button className="px-10 py-4 text-lg font-semibold text-white bg-blue-500 rounded-full shadow-lg hover:bg-blue-600 transform hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-400 font-poppins">
                         Get Started
                     </button>
                 </Link>
