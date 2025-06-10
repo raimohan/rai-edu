@@ -27,7 +27,7 @@ const SidebarMenuItem = ({ icon: Icon, label, to, active }) => {
 
 const Sidebar = () => {
     const { theme } = useContext(ThemeContext);
-    const location = useLocation(); // Yeh hook batata hai ki abhi kaun sa URL active hai
+    const location = useLocation(); // Yeh hook batata hai
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
