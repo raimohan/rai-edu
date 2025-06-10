@@ -1,42 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RaiEdu</title>
-
-<!-- Site Icon (Favicon) Option -->
-<link rel="icon" type="image/x-icon" id="siteIcon">
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const siteIconLink = document.getElementById('siteIcon');
-        const urlParams = new URLSearchParams(window.location.search);
-        const customSiteIconUrl = urlParams.get('siteIcon');
-
-        if (siteIconLink) {
-            if (customSiteIconUrl) {
-                siteIconLink.href = customSiteIconUrl;
-            } else {
-                // Default favicon if no custom URL is provided via query parameter
-                // You can replace this with your preferred default icon URL
-                siteIconLink.href = 'https://placehold.co/32x32/4F46E5/ffffff?text=R';
-            }
-        }
-    });
-</script>
-
-<!-- Google Fonts and Remixicon links for AuthScreen.jsx -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
-
-<!-- Your React app will typically mount here -->
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RaiEdu - Your Learning Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-</body>
+  </body>
 </html>
-
