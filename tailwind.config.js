@@ -30,8 +30,30 @@ export default {
     extend: {
       fontFamily: {
         poppins: ['Poppins', 'sans-serif'],
+        // 'Inter' font is used in AuthScreen, ensure it's loaded via public/index.html
+        // You might consider adding 'inter: ['Inter', 'sans-serif']' here if you plan to use it as a Tailwind utility class
       },
+      // Custom colors from your new AuthScreen design
+      colors: {
+        primary: '#4F46E5', // A vibrant blue, used for primary actions and accents
+        secondary: '#8B5CF6', // A soft purple, often used for secondary actions or highlights
+      },
+      // Custom border radius values for consistency across the app
+      borderRadius: {
+        'none': '0px',
+        'sm': '4px',
+        'DEFAULT': '8px', // Tailwind's default border-radius
+        'md': '12px',
+        'lg': '16px',
+        'xl': '20px',
+        '2xl': '24px',
+        '3xl': '32px',
+        'full': '9999px', // Full circle/pill shape
+        'button': '8px', // Specific border-radius for buttons
+      }
     },
   },
   plugins: [],
 }
+
+  
