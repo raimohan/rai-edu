@@ -7,12 +7,14 @@ import { getFirestore } from 'firebase/firestore';
 // Contexts & Components
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
 import { FirebaseContext } from './contexts/FirebaseContext';
+import { useSoundEffect } from '../hooks/useSoundEffect';
 import LoadingAnimation from './components/common/LoadingAnimation';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import NotificationModal from '../components/common/NotificationModal';
 import { getFirebaseConfig } from './services/firebase';
 
-// Saare Pages ko import karein
+// Pages
 import GetStartedPage from './pages/GetStartedPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -26,19 +28,30 @@ import GeminiAssistantPage from './pages/GeminiAssistantPage';
 import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
-import UserManagerPage from './pages/UserManagerPage'; // <-- Naya page import kiya gaya
+import UserManagerPage from './pages/UserManagerPage';
 
 export const AppContext = createContext();
 
 // Main App Layout
 const MainAppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    // Notifications ka state ab yahan manage hoga
+    const [notifications, setNotifications] = useState([
+        { id: 1, message: 'Welcome to RaiEdu! Login successful.', read: false },
+    ]);
+    const [showNotificationModal, setShowNotificationModal] = useState(false);
+    const { playClick } = useSoundEffect();
+
     return (
         <AppContext.Provider value={{ isSidebarOpen, setIsSidebarOpen }}>
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-poppins text-gray-800 dark:text-gray-200">
                 <Sidebar />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    <Header />
+                    {/* Header ko ab zaroori props pass kiye ja rahe hain */}
+                    <Header 
+                        notifications={notifications} 
+                        setShowNotificationModal={setShowNotificationModal} 
+                    />
                     <section className="flex-1 p-4 md:p-6 overflow-y-auto">
                         <Routes>
                             <Route path="/dashboard" element={<DashboardPage />} />
@@ -51,11 +64,19 @@ const MainAppLayout = () => {
                             <Route path="/community" element={<CommunityPage />} />
                             <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/user-manager" element={<UserManagerPage />} /> {/* <-- Naye page ka route add kiya gaya */}
+                            <Route path="/user-manager" element={<UserManagerPage />} />
                             <Route path="*" element={<Navigate to="/dashboard" />} />
                         </Routes>
                     </section>
                 </main>
+                {/* Notification modal ka logic */}
+                {showNotificationModal && (
+                    <NotificationModal 
+                        notifications={notifications} 
+                        setNotifications={setNotifications} 
+                        onClose={() => { playClick(); setShowNotificationModal(false); }} 
+                    />
+                )}
             </div>
         </AppContext.Provider>
     );
@@ -77,21 +98,21 @@ const App = () => {
             setDb(getFirestore(app));
             setAuth(getAuth(app));
         } else {
-            setIsLoading(false); 
+            setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
         if (!auth) {
-            if(!isLoading && db) setIsLoading(false);
+            if (!isLoading && db) setIsLoading(false);
             return;
-        };
+        }
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
             setIsLoading(false);
         });
         return () => unsubscribe();
-    }, [auth]);
+    }, [auth, db, isLoading]);
 
     useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
