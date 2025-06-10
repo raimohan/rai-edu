@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, createContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
@@ -7,16 +7,13 @@ import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'firebase/fir
 // Contexts
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
 import { FirebaseContext } from './contexts/FirebaseContext';
-
-// Hooks & Components
-import { useSoundEffect } from './hooks/useSoundEffect';
-import AuthScreen from './pages/AuthScreen';
-import LoadingAnimation from './components/common/LoadingAnimation';
-import Sidebar from './components/layout/Sidebar';
-import Header from './components/layout/Header';
-import NotificationModal from './components/common/NotificationModal';
+export const AppContext = createContext(); // For mobile sidebar
 
 // Pages
+import GetStartedPage from './pages/GetStartedPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import AuthScreen from './pages/AuthScreen'; // Fallback
 import DashboardPage from './pages/DashboardPage';
 import ClassNotesPage from './pages/ClassNotesPage';
 import MeetingsPage from './pages/MeetingsPage';
@@ -27,51 +24,50 @@ import GeminiAssistantPage from './pages/GeminiAssistantPage';
 import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import UserManagerPage from './pages/UserManagerPage'; // Naya Admin Page
+
+// Components
+import LoadingAnimation from './components/common/LoadingAnimation';
+import Sidebar from './components/layout/Sidebar';
+import Header from './components/layout/Header';
 import { getFirebaseConfig } from './services/firebase';
 
-// Main App Layout Component
+// Main App Layout - Yeh Sidebar aur Header ke saath content dikhayega
 const MainAppLayout = () => {
-    const { playClick } = useSoundEffect();
-    const [notifications, setNotifications] = useState([/* ...initial notifications... */]);
-    const [showNotificationModal, setShowNotificationModal] = useState(false);
-    
-    // Yeh tasks ab TodoListPage ke andar manage honge
-    const [appTasks, setAppTasks] = useState([]); 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-screen bg-gray-100 font-poppins text-gray-800">
-            <Sidebar />
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <Header
-                    notifications={notifications}
-                    setShowNotificationModal={setShowNotificationModal}
-                />
-                <section className="flex-1 p-6 overflow-y-auto">
-                    <Routes>
-                        <Route path="/dashboard" element={<DashboardPage />} />
-                        <Route path="/class-notes" element={<ClassNotesPage />} />
-                        <Route path="/meetings" element={<MeetingsPage />} />
-                        <Route path="/virtual-classes" element={<VirtualClassesPage />} />
-                        <Route path="/to-do-list" element={<TodoListPage appTasks={appTasks} setAppTasks={setAppTasks} />} />
-                        <Route path="/progress-report" element={<ProgressReportPage />} />
-                        <Route path="/ai-assistant" element={<GeminiAssistantPage />} />
-                        <Route path="/community" element={<CommunityPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        {/* Default route redirects to dashboard */}
-                        <Route path="*" element={<Navigate to="/dashboard" />} />
-                    </Routes>
-                </section>
-            </main>
-            {showNotificationModal && (
-                <NotificationModal notifications={notifications} setNotifications={setNotifications} onClose={() => { playClick(); setShowNotificationModal(false); }} />
-            )}
-        </div>
+        <AppContext.Provider value={{ isSidebarOpen, setIsSidebarOpen }}>
+            <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-poppins text-gray-800 dark:text-gray-200">
+                <Sidebar />
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <Header />
+                    <section className="flex-1 p-4 md:p-6 overflow-y-auto">
+                        <Routes>
+                            <Route path="/dashboard" element={<DashboardPage />} />
+                            <Route path="/class-notes" element={<ClassNotesPage />} />
+                            <Route path="/meetings" element={<MeetingsPage />} />
+                            <Route path="/virtual-classes" element={<VirtualClassesPage />} />
+                            <Route path="/to-do-list" element={<TodoListPage />} />
+                            <Route path="/progress-report" element={<ProgressReportPage />} />
+                            <Route path="/ai-assistant" element={<GeminiAssistantPage />} />
+                            <Route path="/community" element={<CommunityPage />} />
+                            <Route path="/profile" element={<ProfilePage />} />
+                            <Route path="/settings" element={<SettingsPage />} />
+                            <Route path="/user-manager" element={<UserManagerPage />} />
+                            {/* Default route redirects to dashboard */}
+                            <Route path="*" element={<Navigate to="/dashboard" />} />
+                        </Routes>
+                    </section>
+                </main>
+            </div>
+        </AppContext.Provider>
     );
 };
 
 const App = () => {
     const [currentTheme, setCurrentTheme] = useState('blue');
+    const [darkMode, setDarkMode] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [db, setDb] = useState(null);
     const [auth, setAuth] = useState(null);
@@ -81,48 +77,49 @@ const App = () => {
         const firebaseConfig = getFirebaseConfig();
         if (firebaseConfig) {
             const app = initializeApp(firebaseConfig);
-            const firestore = getFirestore(app);
-            const authentication = getAuth(app);
-            setDb(firestore);
-            setAuth(authentication);
-
-            const unsubscribe = onAuthStateChanged(authentication, async (currentUser) => {
-                if (currentUser) {
-                    const userDocRef = doc(firestore, 'users', currentUser.uid);
-                    const userDocSnap = await getDoc(userDocRef);
-                    if (!userDocSnap.exists()) {
-                        await setDoc(userDocRef, {
-                            email: currentUser.email,
-                            username: currentUser.displayName || `User_${currentUser.uid.substring(0, 4)}`,
-                            role: 'user',
-                            createdAt: serverTimestamp()
-                        });
-                    }
-                    setUser(currentUser);
-                } else {
-                    setUser(null);
-                }
-                setIsLoading(false);
-            });
-            return () => unsubscribe();
+            setDb(getFirestore(app));
+            setAuth(getAuth(app));
         }
     }, []);
 
+    useEffect(() => {
+        if (!auth) return;
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+                // User document banane ka logic yahan daal sakte hain
+                setUser(currentUser);
+            } else {
+                setUser(null);
+            }
+            setIsLoading(false);
+        });
+        return () => unsubscribe();
+    }, [auth]);
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [darkMode]);
+
     if (isLoading) {
-        return (
-            <div className="fixed inset-0 bg-white flex items-center justify-center">
-                <LoadingAnimation />
-            </div>
-        );
+        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
     }
 
     const themeClass = themeColors[currentTheme];
 
     return (
         <FirebaseContext.Provider value={{ db, auth, user }}>
-            <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme }}>
+            <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
                 <BrowserRouter>
-                    {!user ? <AuthScreen /> : <MainAppLayout />}
+                    <Routes>
+                        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
+                        <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/dashboard" />} />
+                        <Route path="/welcome" element={!user ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
+                        <Route path="/*" element={user ? <MainAppLayout /> : <Navigate to="/welcome" />} />
+                    </Routes>
                 </BrowserRouter>
             </ThemeContext.Provider>
         </FirebaseContext.Provider>
@@ -130,4 +127,3 @@ const App = () => {
 };
 
 export default App;
-                
