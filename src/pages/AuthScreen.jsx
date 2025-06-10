@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { Mail, Lock } from 'lucide-react'; // Keeping these for consistency, though not actively used in new design
 import {
@@ -452,23 +451,27 @@ const AuthScreen = () => {
                     </div>
 
                     {/* Social Login Buttons */}
+                    {/* Google Button - Ensuring it's present and correctly styled */}
                     <ThemedButton
                         onClick={handleGoogleLogin}
                         className="w-full bg-white border border-gray-200 py-3 px-4 rounded-button font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm flex items-center justify-center gap-3 whitespace-nowrap"
                         disabled={loading}
                     >
                         <div className="w-5 h-5 flex items-center justify-center">
+                            {/* Google Icon from Remixicon */}
                             <i className="ri-google-fill text-lg"></i>
                         </div>
                         Continue with Google
                     </ThemedButton>
 
+                    {/* Apple Button */}
                     <ThemedButton
                         className="w-full bg-black text-white py-3 px-4 rounded-button font-medium hover:bg-black/90 transition-colors shadow-sm flex items-center justify-center gap-3 whitespace-nowrap"
                         disabled={loading}
                         // Note: Full Apple login requires specific Firebase and Apple Developer setup
                     >
                         <div className="w-5 h-5 flex items-center justify-center">
+                            {/* Apple Icon from Remixicon */}
                             <i className="ri-apple-fill text-lg"></i>
                         </div>
                         Continue with Apple
