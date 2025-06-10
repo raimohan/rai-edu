@@ -6,16 +6,21 @@ export const useSoundEffect = () => {
     const alarmSynth = useRef(null);
 
     useEffect(() => {
-        clickSynth.current = new Tone.Synth({
-            oscillator: { type: "sine" },
-            envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.05 },
-            volume: -25
-        }).toDestination();
+        // Synths ko create karna, lekin Tone.start() ke bina
+        try {
+            clickSynth.current = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.05 },
+                volume: -25
+            }).toDestination();
 
-        alarmSynth.current = new Tone.Synth({
-            oscillator: { type: "square" },
-            envelope: { attack: 0.1, decay: 0.5, sustain: 0.3, release: 1 }
-        }).toDestination();
+            alarmSynth.current = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.1, decay: 0.5, sustain: 0.3, release: 1 }
+            }).toDestination();
+        } catch (e) {
+            console.error("Failed to create Tone.js synths:", e);
+        }
 
         return () => {
             if (clickSynth.current) clickSynth.current.dispose();
@@ -23,24 +28,29 @@ export const useSoundEffect = () => {
         };
     }, []);
 
-    const playClick = () => {
-        if (clickSynth.current && Tone.context.state !== 'running') {
-            Tone.context.resume().then(() => {
-                clickSynth.current.triggerAttackRelease("C5", "16n");
-            });
-        } else if (clickSynth.current) {
-            clickSynth.current.triggerAttackRelease("C5", "16n");
+    const startAudioContext = async () => {
+        if (Tone.context.state !== 'running') {
+            await Tone.start();
         }
+    };
+
+    const playClick = () => {
+        startAudioContext().then(() => {
+            if (clickSynth.current) {
+                clickSynth.current.triggerAttackRelease("C5", "16n");
+            }
+        });
     };
 
     const playAlarm = () => {
-        if (alarmSynth.current) {
-            Tone.start();
-            alarmSynth.current.triggerAttackRelease("A4", "1s", Tone.now());
-            alarmSynth.current.triggerAttackRelease("F4", "1s", Tone.now() + 0.5);
-        }
+        startAudioContext().then(() => {
+            if (alarmSynth.current) {
+                alarmSynth.current.triggerAttackRelease("A4", "0.5n", Tone.now());
+                alarmSynth.current.triggerAttackRelease("F4", "0.5n", Tone.now() + 0.5);
+            }
+        });
     };
-
+    
     const stopAlarm = () => {
         if (alarmSynth.current) {
             alarmSynth.current.releaseAll();
