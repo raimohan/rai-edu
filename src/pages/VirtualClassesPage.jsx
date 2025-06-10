@@ -7,7 +7,7 @@ import { Youtube, Play, Clock, Trash2, Plus } from 'lucide-react';
 
 const VirtualClassesPage = () => {
     const { db, user } = useContext(FirebaseContext);
-    const [classes, setClasses] = useState([]);
+    const [classes, setClasses] = useState([]); // <-- Pehle se data hata diya, ab yeh khaali hai
     const [userRole, setUserRole] = useState('user');
     
     // Admin form state
@@ -17,6 +17,7 @@ const VirtualClassesPage = () => {
     const [time, setTime] = useState('');
     const [link, setLink] = useState('');
 
+    // User ka role check karna
     useEffect(() => {
         const checkUserRole = async () => {
             if (user) {
@@ -30,6 +31,7 @@ const VirtualClassesPage = () => {
         checkUserRole();
     }, [user, db]);
 
+    // Classes ko database se real-time me fetch karna
     useEffect(() => {
         if (!db) return;
         const classesRef = collection(db, 'virtual_classes');
@@ -71,17 +73,20 @@ const VirtualClassesPage = () => {
         }
 
         await addDoc(collection(db, 'virtual_classes'), classData);
-        // Reset form
+        // Form reset karna
         setTitle(''); setTeacher(''); setTime(''); setLink('');
     };
 
     const handleDeleteClass = async (id) => {
-        await deleteDoc(doc(db, "virtual_classes", id));
+        if(window.confirm("Are you sure you want to delete this class?")) {
+            await deleteDoc(doc(db, "virtual_classes", id));
+        }
     };
 
     return (
         <Card title="Virtual Classes" className="h-full flex flex-col">
-             {userRole === 'admin' && (
+            {/* Class add karne ka form sirf admin ko dikhega */}
+            {userRole === 'admin' && (
                 <div className="mb-6 p-4 bg-green-50 rounded-xl">
                     <h4 className="font-semibold text-gray-700 mb-3">Admin Panel: Add New Class</h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -105,36 +110,41 @@ const VirtualClassesPage = () => {
             )}
 
             <div className="flex flex-col space-y-4 flex-1 overflow-y-auto">
-                {classes.map(cls => (
-                    <div key={cls.id} className="p-4 bg-gray-50 rounded-xl shadow-sm relative group">
-                        {cls.type === 'live' ? (
-                             <div className="flex items-center">
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-700">{cls.title}</h4>
-                                    <p className="text-gray-500 text-sm">Teacher: {cls.teacher}</p>
-                                    <p className="text-gray-500 text-sm"><Clock className="inline w-4 h-4 mr-1"/> {cls.time}</p>
+                {/* Agar koi class nahi hai to message dikhana */}
+                {classes.length === 0 ? (
+                    <p className="text-center text-gray-500 py-10">No upcoming classes scheduled.</p>
+                ) : (
+                    classes.map(cls => (
+                        <div key={cls.id} className="p-4 bg-gray-50 rounded-xl shadow-sm relative group">
+                            {cls.type === 'live' ? (
+                                <div className="flex items-center">
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold text-gray-700">{cls.title}</h4>
+                                        <p className="text-gray-500 text-sm">Teacher: {cls.teacher}</p>
+                                        <p className="text-gray-500 text-sm"><Clock className="inline w-4 h-4 mr-1"/> {cls.time}</p>
+                                    </div>
+                                    <a href={cls.link} target="_blank" rel="noopener noreferrer"><ThemedButton icon={Play}>Join</ThemedButton></a>
                                 </div>
-                                <a href={cls.link} target="_blank" rel="noopener noreferrer"><ThemedButton icon={Play}>Join</ThemedButton></a>
-                             </div>
-                        ) : (
-                            <div>
-                                <h4 className="font-semibold text-gray-700 mb-2 flex items-center"><Youtube className="w-5 h-5 text-red-500 mr-2"/> {cls.title}</h4>
-                                <div className="aspect-video w-full rounded-xl overflow-hidden">
-                                    <iframe className="w-full h-full" src={cls.link} title={cls.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                            ) : (
+                                <div>
+                                    <h4 className="font-semibold text-gray-700 mb-2 flex items-center"><Youtube className="w-5 h-5 text-red-500 mr-2"/> {cls.title}</h4>
+                                    <div className="aspect-video w-full rounded-xl overflow-hidden">
+                                        <iframe className="w-full h-full" src={cls.link} title={cls.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                        {userRole === 'admin' && (
-                            <button onClick={() => handleDeleteClass(cls.id)} className="absolute top-2 right-2 p-2 text-red-500 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Trash2 size={18} />
-                            </button>
-                        )}
-                    </div>
-                ))}
+                            )}
+                            {userRole === 'admin' && (
+                                <button onClick={() => handleDeleteClass(cls.id)} className="absolute top-2 right-2 p-2 text-red-500 bg-white/70 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 size={18} />
+                                </button>
+                            )}
+                        </div>
+                    ))
+                )}
             </div>
         </Card>
     );
 };
 
 export default VirtualClassesPage;
-        
+              
