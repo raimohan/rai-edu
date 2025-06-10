@@ -19,12 +19,10 @@ export default {
       pattern: /ring-(blue|red|gray|green|yellow|purple|pink)-(100|400|500)/,
     },
     {
-      // Corrected pattern for peer-checked:bg-
       pattern: /peer-checked:bg-(blue|red|gray|green|yellow|purple|pink)-500/,
     },
     {
-      // Corrected pattern for peer-checked:ring-
-      pattern: /peer-checked:ring-(blue|red|gray|green|yellow|purple|pink)-400/,
+        pattern: /peer-checked:ring-(blue|red|gray|green|yellow|purple|pink)-400/,
     },
     'bg-gray-800', // For black theme button
   ],
@@ -33,27 +31,7 @@ export default {
       fontFamily: {
         poppins: ['Poppins', 'sans-serif'],
       },
-      // Custom colors from your new AuthScreen design
-      colors: {
-        primary: '#4F46E5', // A vibrant blue, used for primary actions and accents
-        secondary: '#8B5CF6', // A soft purple, often used for secondary actions or highlights
-      },
-      // Custom border radius values for consistency across the app
-      borderRadius: {
-        'none': '0px',
-        'sm': '4px',
-        'DEFAULT': '8px', // Tailwind's default border-radius
-        'md': '12px',
-        'lg': '16px',
-        'xl': '20px',
-        '2xl': '24px',
-        '3xl': '32px',
-        'full': '9999px', // Full circle/pill shape
-        'button': '8px', // Specific border-radius for buttons
-      }
     },
   },
   plugins: [],
 }
-
-    
