@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // Contexts & Components
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
@@ -9,16 +10,15 @@ import { FirebaseContext } from './contexts/FirebaseContext';
 import LoadingAnimation from './components/common/LoadingAnimation';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import { getFirebaseConfig } from './services/firebase';
 
-// Naye Pages
+// Pages
 import GetStartedPage from './pages/GetStartedPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-
-// Puraane Pages
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
-// Hum baaki pages ko agle steps me add karenge
+// Baaki pages ke import yahan add honge jab hum un par kaam karenge
 
 export const AppContext = createContext(); // Mobile sidebar ke liye
 
@@ -52,17 +52,38 @@ const App = () => {
     const [currentTheme, setCurrentTheme] = useState('blue');
     const [darkMode, setDarkMode] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [db, setDb] = useState(null);
+    const [auth, setAuth] = useState(null);
     const [user, setUser] = useState(null);
-    const auth = getAuth();
-    const db = getFirestore();
+
+    // Firebase Initialization ka sahi code
+    useEffect(() => {
+        const firebaseConfig = getFirebaseConfig();
+        if (firebaseConfig) {
+            const app = initializeApp(firebaseConfig);
+            const firestore = getFirestore(app);
+            const authentication = getAuth(app);
+            setDb(firestore);
+            setAuth(authentication);
+        } else {
+            console.error("Firebase config is missing!");
+            setIsLoading(false); 
+        }
+    }, []);
 
     useEffect(() => {
+        if (!auth) {
+             // Agar auth initialize nahi hua hai to loading state me raho
+            if(!isLoading && db) setIsLoading(false);
+            return;
+        };
+
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
             setIsLoading(false);
         });
         return () => unsubscribe();
-    }, [auth]);
+    }, [auth]); // Yeh useEffect tab chalega jab auth set ho jayega
 
     useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
@@ -84,7 +105,6 @@ const App = () => {
                         <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/dashboard" />} />
                         <Route path="/welcome" element={!user ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
                         
-                        {/* Agar user logged in hai to "/*" waale saare path MainAppLayout par jayenge */}
                         <Route path="/*" element={user ? <MainAppLayout /> : <Navigate to="/welcome" />} />
                     </Routes>
                 </BrowserRouter>
