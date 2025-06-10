@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { Mail, Lock } from 'lucide-react'; // Keeping these for consistency, though not actively used in new design
 import {
@@ -438,4 +439,57 @@ const AuthScreen = () => {
                             id="sendOtp"
                             onClick={handleSendOtp}
                             className="w-full"
-                            disabled=}
+                            disabled={loading || phoneNumber.length !== 10} // Disable if phone number not 10 digits or loading
+                        >
+                            {loading ? 'Sending OTP...' : 'Send OTP'}
+                        </ThemedButton>
+                    )}
+
+                    <div className="relative flex items-center py-2">
+                        <div className="flex-grow border-t border-gray-300"></div>
+                        <span className="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
+                        <div className="flex-grow border-t border-gray-300"></div>
+                    </div>
+
+                    {/* Social Login Buttons */}
+                    <ThemedButton
+                        onClick={handleGoogleLogin}
+                        className="w-full bg-white border border-gray-200 py-3 px-4 rounded-button font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm flex items-center justify-center gap-3 whitespace-nowrap"
+                        disabled={loading}
+                    >
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            <i className="ri-google-fill text-lg"></i>
+                        </div>
+                        Continue with Google
+                    </ThemedButton>
+
+                    <ThemedButton
+                        className="w-full bg-black text-white py-3 px-4 rounded-button font-medium hover:bg-black/90 transition-colors shadow-sm flex items-center justify-center gap-3 whitespace-nowrap"
+                        disabled={loading}
+                        // Note: Full Apple login requires specific Firebase and Apple Developer setup
+                    >
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            <i className="ri-apple-fill text-lg"></i>
+                        </div>
+                        Continue with Apple
+                    </ThemedButton>
+                </div>
+
+                {/* Footer Links */}
+                <div className="mt-6 text-center">
+                    <a href="#" className="text-sm text-gray-600 hover:text-primary">Forgot Password?</a>
+                    <p className="mt-4 text-sm text-gray-600">
+                        Don't have an account?{' '}
+                        <a href="#" className="font-medium text-primary hover:text-primary/80">Sign Up</a>
+                    </p>
+                </div>
+            </div>
+
+            {/* Custom Alert Component */}
+            {showAlert && <CustomAlert message={alertMessage} type={alertType} onClose={() => setShowAlert(false)} />}
+            {loading && <LoadingAnimation />} {/* Assuming you have a LoadingAnimation component */}
+        </div>
+    );
+};
+
+export default AuthScreen;
