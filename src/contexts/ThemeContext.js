@@ -1,7 +1,5 @@
 import { createContext } from 'react';
 
-export const ThemeContext = createContext();
-
 export const themeColors = {
   blue: { primary: 'blue-500', light: 'blue-100', text: 'blue-600' },
   red: { primary: 'red-500', light: 'red-100', text: 'red-600' },
@@ -11,3 +9,11 @@ export const themeColors = {
   purple: { primary: 'purple-500', light: 'purple-100', text: 'purple-600' },
   pink: { primary: 'pink-500', light: 'pink-100', text: 'pink-600' },
 };
+
+// Naya badlaav: Humne yahan ek default value di hai taaki app crash na ho
+export const ThemeContext = createContext({
+    theme: themeColors.blue,
+    currentTheme: 'blue',
+    setCurrentTheme: () => {}, // ek khaali function
+});
+
