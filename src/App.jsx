@@ -7,11 +7,11 @@ import { getFirestore } from 'firebase/firestore';
 // Contexts & Components
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
 import { FirebaseContext } from './contexts/FirebaseContext';
-import { useSoundEffect } from '../hooks/useSoundEffect';
+import { useSoundEffect } from '../hooks/useSoundEffect'; // <-- Yeh file zaroori hai
 import LoadingAnimation from './components/common/LoadingAnimation';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
-import NotificationModal from '../components/common/NotificationModal';
+import NotificationModal from './components/common/NotificationModal';
 import { getFirebaseConfig } from './services/firebase';
 
 // Pages
@@ -35,7 +35,6 @@ export const AppContext = createContext();
 // Main App Layout
 const MainAppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    // Notifications ka state ab yahan manage hoga
     const [notifications, setNotifications] = useState([
         { id: 1, message: 'Welcome to RaiEdu! Login successful.', read: false },
     ]);
@@ -47,7 +46,6 @@ const MainAppLayout = () => {
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-poppins text-gray-800 dark:text-gray-200">
                 <Sidebar />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    {/* Header ko ab zaroori props pass kiye ja rahe hain */}
                     <Header 
                         notifications={notifications} 
                         setShowNotificationModal={setShowNotificationModal} 
@@ -69,7 +67,6 @@ const MainAppLayout = () => {
                         </Routes>
                     </section>
                 </main>
-                {/* Notification modal ka logic */}
                 {showNotificationModal && (
                     <NotificationModal 
                         notifications={notifications} 
@@ -98,15 +95,15 @@ const App = () => {
             setDb(getFirestore(app));
             setAuth(getAuth(app));
         } else {
-            setIsLoading(false);
+            setIsLoading(false); 
         }
     }, []);
 
     useEffect(() => {
         if (!auth) {
-            if (!isLoading && db) setIsLoading(false);
+            if(!isLoading && db) setIsLoading(false);
             return;
-        }
+        };
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
             setIsLoading(false);
