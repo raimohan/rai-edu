@@ -7,7 +7,7 @@ import { Youtube, Play, Clock, Trash2, Plus } from 'lucide-react';
 
 const VirtualClassesPage = () => {
     const { db, user } = useContext(FirebaseContext);
-    const [classes, setClasses] = useState([]); // <-- Pehle se data hata diya, ab yeh khaali hai
+    const [classes, setClasses] = useState([]); // <-- Pehle se bhara hua data hata diya, ab yeh khaali hai
     const [userRole, setUserRole] = useState('user');
     
     // Admin form state
@@ -17,7 +17,6 @@ const VirtualClassesPage = () => {
     const [time, setTime] = useState('');
     const [link, setLink] = useState('');
 
-    // User ka role check karna
     useEffect(() => {
         const checkUserRole = async () => {
             if (user) {
@@ -31,7 +30,6 @@ const VirtualClassesPage = () => {
         checkUserRole();
     }, [user, db]);
 
-    // Classes ko database se real-time me fetch karna
     useEffect(() => {
         if (!db) return;
         const classesRef = collection(db, 'virtual_classes');
@@ -73,20 +71,18 @@ const VirtualClassesPage = () => {
         }
 
         await addDoc(collection(db, 'virtual_classes'), classData);
-        // Form reset karna
+        // Reset form
         setTitle(''); setTeacher(''); setTime(''); setLink('');
     };
 
     const handleDeleteClass = async (id) => {
-        if(window.confirm("Are you sure you want to delete this class?")) {
-            await deleteDoc(doc(db, "virtual_classes", id));
-        }
+        await deleteDoc(doc(db, "virtual_classes", id));
     };
 
     return (
         <Card title="Virtual Classes" className="h-full flex flex-col">
-            {/* Class add karne ka form sirf admin ko dikhega */}
-            {userRole === 'admin' && (
+             {/* Yeh form ab sirf admin ko dikhega */}
+             {userRole === 'admin' && (
                 <div className="mb-6 p-4 bg-green-50 rounded-xl">
                     <h4 className="font-semibold text-gray-700 mb-3">Admin Panel: Add New Class</h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -110,9 +106,9 @@ const VirtualClassesPage = () => {
             )}
 
             <div className="flex flex-col space-y-4 flex-1 overflow-y-auto">
-                {/* Agar koi class nahi hai to message dikhana */}
+                {/* Agar koi class nahi hai, to message dikhao */}
                 {classes.length === 0 ? (
-                    <p className="text-center text-gray-500 py-10">No upcoming classes scheduled.</p>
+                    <p className="text-center text-gray-500 py-8">No upcoming classes scheduled by the admin.</p>
                 ) : (
                     classes.map(cls => (
                         <div key={cls.id} className="p-4 bg-gray-50 rounded-xl shadow-sm relative group">
@@ -134,7 +130,7 @@ const VirtualClassesPage = () => {
                                 </div>
                             )}
                             {userRole === 'admin' && (
-                                <button onClick={() => handleDeleteClass(cls.id)} className="absolute top-2 right-2 p-2 text-red-500 bg-white/70 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleDeleteClass(cls.id)} className="absolute top-2 right-2 p-2 text-red-500 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Trash2 size={18} />
                                 </button>
                             )}
@@ -147,4 +143,4 @@ const VirtualClassesPage = () => {
 };
 
 export default VirtualClassesPage;
-              
+                                                  
