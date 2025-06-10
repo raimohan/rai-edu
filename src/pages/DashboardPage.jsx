@@ -1,10 +1,10 @@
 import React from 'react';
-import { ClassNotesCard } from '../components/dashboard/ClassNotesCard';
-import { ClassMeetingsCard } from '../components/dashboard/ClassMeetingsCard';
-import { CalendarWidgetCard } from '../components/dashboard/CalendarWidgetCard';
-import { VirtualClassesCard } from '../components/dashboard/VirtualClassesCard';
-import { SmartTodoListCard } from '../components/dashboard/SmartTodoListCard';
-import { ProgressReportDashboardCard } from '../components/dashboard/ProgressReportDashboardCard';
+import  ClassNotesCard  from '../components/dashboard/ClassNotesCard';
+import  ClassMeetingsCard  from '../components/dashboard/ClassMeetingsCard';
+import  CalendarWidgetCard  from '../components/dashboard/CalendarWidgetCard';
+import  VirtualClassesCard  from '../components/dashboard/VirtualClassesCard';
+import  SmartTodoListCard  from '../components/dashboard/SmartTodoListCard';
+import  ProgressReportDashboardCard  from '../components/dashboard/ProgressReportDashboardCard';
 
 const DashboardPage = ({ setActiveMenuItem }) => {
     return (
