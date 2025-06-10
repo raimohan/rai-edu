@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -25,10 +26,11 @@ import GeminiAssistantPage from './pages/GeminiAssistantPage';
 import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
-import UserManagerPage from './pages/UserManagerPage';
+import UserManagerPage from './pages/UserManagerPage'; // <-- Naya page import kiya gaya
 
 export const AppContext = createContext();
 
+// Main App Layout
 const MainAppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     return (
@@ -49,7 +51,7 @@ const MainAppLayout = () => {
                             <Route path="/community" element={<CommunityPage />} />
                             <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/user-manager" element={<UserManagerPage />} />
+                            <Route path="/user-manager" element={<UserManagerPage />} /> {/* <-- Naye page ka route add kiya gaya */}
                             <Route path="*" element={<Navigate to="/dashboard" />} />
                         </Routes>
                     </section>
@@ -59,9 +61,63 @@ const MainAppLayout = () => {
     );
 };
 
+// Main App Component
 const App = () => {
-    // ... baaki App component ka code waisa hi rahega jaisa pichle message me tha ...
-    // (Firebase initialization, auth state, theme state, etc.)
+    const [currentTheme, setCurrentTheme] = useState('blue');
+    const [darkMode, setDarkMode] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [db, setDb] = useState(null);
+    const [auth, setAuth] = useState(null);
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const firebaseConfig = getFirebaseConfig();
+        if (firebaseConfig) {
+            const app = initializeApp(firebaseConfig);
+            setDb(getFirestore(app));
+            setAuth(getAuth(app));
+        } else {
+            setIsLoading(false); 
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!auth) {
+            if(!isLoading && db) setIsLoading(false);
+            return;
+        };
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            setIsLoading(false);
+        });
+        return () => unsubscribe();
+    }, [auth]);
+
+    useEffect(() => {
+        if (darkMode) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+    }, [darkMode]);
+
+    if (isLoading) {
+        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
+    }
+
+    const themeClass = themeColors[currentTheme];
+
+    return (
+        <FirebaseContext.Provider value={{ db, auth, user }}>
+            <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
+                        <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/dashboard" />} />
+                        <Route path="/welcome" element={!user ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
+                        <Route path="/*" element={user ? <MainAppLayout /> : <Navigate to="/welcome" />} />
+                    </Routes>
+                </BrowserRouter>
+            </ThemeContext.Provider>
+        </FirebaseContext.Provider>
+    );
 };
 
 export default App;
