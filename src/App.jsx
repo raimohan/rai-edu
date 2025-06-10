@@ -7,7 +7,7 @@ import { getFirestore } from 'firebase/firestore';
 // Contexts & Components
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
 import { FirebaseContext } from './contexts/FirebaseContext';
-import { useSoundEffect } from '../hooks/useSoundEffect'; // <-- Yeh file zaroori hai
+import { useSoundEffect } from './hooks/useSoundEffect'; // <-- Yeh file zaroori hai
 import LoadingAnimation from './components/common/LoadingAnimation';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
