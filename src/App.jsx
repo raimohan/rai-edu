@@ -86,7 +86,8 @@ const MainAppLayout = () => {
                             <Route path="/progress-report" element={<ProgressReportPage />} />
                             <Route path="/ai-assistant" element={<GeminiAssistantPage />} />
                             <Route path="/community" element={<CommunityPage />} />
-                            <Route path="/profile" element={<ProfilePage />} />
+                            <Route path="/profile/:userId" element={<ProfilePage />} />
+                            <Route path="/profile" element={<Navigate to={`/profile/${currentUser.uid}`} />} />
                             <Route path="/settings" element={<SettingsPage />} />
                             <Route path="/user-manager" element={<UserManagerPage />} />
                             <Route path="*" element={<Navigate to="/dashboard" />} />
