@@ -1,12 +1,12 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FirebaseContext } from '../contexts/FirebaseContext';
+import { useAuth } from '../contexts/FirebaseContext'; // <-- IMPORT THE NEW HOOK
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { User, Mail, Lock } from 'lucide-react';
 
 const SignupPage = () => {
-    const { auth, db } = useContext(FirebaseContext);
+    const { auth, db } = useAuth(); // <-- USE THE HOOK
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -23,30 +23,32 @@ const SignupPage = () => {
         if (username.length < 3) {
             return setError("Username must be at least 3 characters long.");
         }
+        if (!auth || !db) return; // Guard against auth/db not being ready
         setLoading(true);
         setError('');
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Username ko user ke Auth profile me update karna
+            // Update the user's Auth profile with the username
             await updateProfile(user, { displayName: username });
 
-            // Firestore me user ka document banana
+            // Create the user's document in Firestore
             await setDoc(doc(db, "users", user.uid), {
                 username: username,
                 email: email,
-                role: 'user',
+                role: 'user', // Default role for new users
                 createdAt: serverTimestamp(),
                 about: `Hi, I'm ${username}!`,
                 education: '',
                 status: 'online'
             });
 
-            navigate('/dashboard'); // Sign up ke baad dashboard par bhejo
+            navigate('/dashboard'); // Navigate to dashboard after sign up
 
         } catch (err) {
-            setError(err.message);
+            setError("Failed to create an account. The email might already be in use.");
+            console.error(err);
         }
         setLoading(false);
     };
