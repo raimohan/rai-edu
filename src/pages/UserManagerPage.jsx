@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { useAuth } from '../contexts/FirebaseContext'; // <-- नया हुक इम्पोर्ट करें
+import { useAuth } from '../contexts/FirebaseContext';
 import Card from '../components/common/Card';
 import LoadingAnimation from '../components/common/LoadingAnimation';
 import { Shield, ShieldOff, UserX, UserCheck, Trash2 } from 'lucide-react';
 
 const UserManagerPage = () => {
-    // नए हुक से हमें ज़रूरत की हर चीज़ एक ही बार में मिल जाएगी
     const { db, currentUser, isAdmin } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // एडमिन रोल चेक करने वाला पुराना लॉजिक अब पूरी तरह से हटा दिया गया है।
-
-    // अगर यूजर एडमिन है, तो सभी यूजर्स का डेटा ले आओ
     useEffect(() => {
         if (isAdmin && db) {
             const usersCollectionRef = collection(db, 'users');
@@ -22,14 +18,12 @@ const UserManagerPage = () => {
                 setUsers(usersList);
                 setLoading(false);
             });
-            return () => unsubscribe(); // Real-time listener को साफ़ करें
+            return () => unsubscribe();
         } else {
-            // अगर यूजर एडमिन नहीं है, तो लोडिंग बंद करें
             setLoading(false);
         }
     }, [isAdmin, db]);
 
-    // User का रोल बदलने के लिए फंक्शन
     const toggleAdminRole = async (targetUserId, currentRole) => {
         if (targetUserId === currentUser.uid) {
             alert("You cannot change your own role.");
@@ -40,7 +34,6 @@ const UserManagerPage = () => {
         await updateDoc(userDocRef, { role: newRole });
     };
 
-    // User को disable/enable करने के लिए फंक्शन
     const toggleUserStatus = async (targetUserId, currentStatus) => {
         if (targetUserId === currentUser.uid) {
             alert("You cannot disable yourself.");
@@ -51,17 +44,13 @@ const UserManagerPage = () => {
         await updateDoc(userDocRef, { status: newStatus });
     };
 
-    // User को delete करने के लिए फंक्शन
     const deleteUserData = async (targetUserId) => {
         if (targetUserId === currentUser.uid) {
             alert("You cannot delete your own account from here.");
             return;
         }
         if (window.confirm("Are you sure you want to permanently delete this user's data? This cannot be undone.")) {
-            // Firestore से user का data delete करें
             await deleteDoc(doc(db, 'users', targetUserId));
-            // जरूरी नोट: इससे सिर्फ डेटाबेस रिकॉर्ड डिलीट होगा।
-            // असली यूजर अकाउंट (login वाला) डिलीट करने के लिए Firebase Console या Cloud Function का इस्तेमाल करना पड़ता है।
         }
     };
 
