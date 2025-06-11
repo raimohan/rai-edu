@@ -1,33 +1,22 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { collection, doc, getDoc, query, orderBy, onSnapshot, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { FirebaseContext } from '../contexts/FirebaseContext';
+import React, { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../contexts/FirebaseContext'; // <-- IMPORT THE NEW HOOK
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
 import { Plus, Play, Trash2 } from 'lucide-react';
 
 const MeetingsPage = () => {
-    const { db, user } = useContext(FirebaseContext);
+    // Use the hook to get everything we need
+    const { db, currentUser, isAdmin } = useAuth();
     const [meetLinkInput, setMeetLinkInput] = useState('');
     const [meetingLinks, setMeetingLinks] = useState([]);
-    const [userRole, setUserRole] = useState('user'); // Default role
 
-    // User ka role check karna
-    useEffect(() => {
-        const checkUserRole = async () => {
-            if (user) {
-                const userDocRef = doc(db, 'users', user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
-                    setUserRole('admin');
-                }
-            }
-        };
-        checkUserRole();
-    }, [user, db]);
+    // The logic to check for admin role is no longer needed here.
+    // It is now handled centrally by AuthProvider.
 
-    // Meeting links ko real-time me fetch karna
+    // Fetch meeting links in real-time
     useEffect(() => {
-        if (!db) return;
+        if (!db) return; // Wait until db is available
         const meetingsRef = collection(db, 'meeting_links');
         const q = query(meetingsRef, orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -36,31 +25,33 @@ const MeetingsPage = () => {
         return () => unsubscribe();
     }, [db]);
 
-    // Naya link add karne ka function (sirf admin ke liye)
+    // Function to add a new link (only for admin)
     const handleAddLink = async () => {
-        if (!meetLinkInput.trim() || !user) return;
+        if (!meetLinkInput.trim() || !currentUser || !db) return;
         await addDoc(collection(db, 'meeting_links'), {
             link: meetLinkInput,
             createdAt: serverTimestamp(),
+            addedBy: currentUser.displayName, // Optionally track who added the link
         });
         setMeetLinkInput('');
     };
     
-    // Link delete karne ka function (sirf admin ke liye)
+    // Function to delete a link (only for admin)
     const handleDeleteLink = async (id) => {
+        if (!db) return;
         await deleteDoc(doc(db, "meeting_links", id));
     };
 
     return (
         <Card title="Meeting Links" className="h-full flex flex-col">
-            <p className="text-gray-600 mb-4">Yahan sabhi zaroori meeting links milenge.</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Yahan sabhi zaroori meeting links milenge.</p>
 
-            {/* Yeh form sirf admin ko dikhega */}
-            {userRole === 'admin' && (
-                 <div className="mb-6 p-4 bg-blue-50 rounded-xl">
-                    <h4 className="font-semibold text-gray-700 mb-2">Admin Panel: Add New Meeting Link</h4>
+            {/* This form will only be visible to admins */}
+            {isAdmin && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-gray-800 rounded-xl">
+                    <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Admin Panel: Add New Meeting Link</h4>
                     <div className="flex space-x-3">
-                        <input type="url" placeholder="Naya meeting link paste karein..." value={meetLinkInput} onChange={(e) => setMeetLinkInput(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg" />
+                        <input type="url" placeholder="Naya meeting link paste karein..." value={meetLinkInput} onChange={(e) => setMeetLinkInput(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" />
                         <ThemedButton onClick={handleAddLink} icon={Plus}>Add Link</ThemedButton>
                     </div>
                 </div>
@@ -68,15 +59,15 @@ const MeetingsPage = () => {
             
             <div className="flex-1 flex flex-col space-y-4 overflow-y-auto">
                 {meetingLinks.map(linkItem => (
-                    <div key={linkItem.id} className="p-4 bg-gray-50 rounded-xl flex items-center justify-between hover:shadow-md transition-shadow">
-                        <span className="text-gray-700 break-all pr-4">{linkItem.link}</span>
+                    <div key={linkItem.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl flex items-center justify-between hover:shadow-md transition-shadow">
+                        <span className="text-gray-700 dark:text-gray-300 break-all pr-4">{linkItem.link}</span>
                         <div className="flex items-center space-x-3">
                             <a href={linkItem.link} target="_blank" rel="noopener noreferrer">
                                 <ThemedButton className="px-5 py-2 text-sm" icon={Play}>Join</ThemedButton>
                             </a>
-                            {/* Delete button sirf admin ko dikhega */}
-                            {userRole === 'admin' && (
-                                <button onClick={() => handleDeleteLink(linkItem.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
+                            {/* Delete button is only visible to admins */}
+                            {isAdmin && (
+                                <button onClick={() => handleDeleteLink(linkItem.id)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-full">
                                     <Trash2 size={20} />
                                 </button>
                             )}
@@ -89,4 +80,3 @@ const MeetingsPage = () => {
 };
 
 export default MeetingsPage;
-                
