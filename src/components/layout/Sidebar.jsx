@@ -70,6 +70,6 @@ const Sidebar = () => {
             </nav>
         </aside>
     );
-}; // <-- THE FIX IS HERE. The semicolon has been removed.
+};
 
 export default Sidebar;
