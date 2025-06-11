@@ -77,7 +77,6 @@ const CommunityPage = () => {
                                         {msg.username}
                                     </Link>
                                 )}
-                                
                                 {msg.type === 'image' && <img src={msg.fileUrl} alt={msg.fileName} className="rounded-lg mb-1 max-w-full h-auto cursor-pointer" onClick={()=> window.open(msg.fileUrl, '_blank')}/>}
                                 {msg.type === 'file' && (
                                     <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 mb-1 bg-gray-200 dark:bg-gray-600 rounded-lg">
@@ -86,7 +85,6 @@ const CommunityPage = () => {
                                     </a>
                                 )}
                                 {msg.messageText && <p className="text-sm whitespace-pre-wrap">{msg.messageText}</p>}
-                                
                                 <div className={`text-xs mt-1.5 text-right ${isCurrentUser ? 'text-gray-200/70' : 'text-gray-500/70'}`}>{msg.timestamp}</div>
                             </div>
                             {(isCurrentUser || isAdmin) && (
