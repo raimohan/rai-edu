@@ -1,5 +1,4 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
-// getDocs और writeBatch को इम्पोर्ट करें
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Link } from 'react-router-dom';
@@ -30,7 +29,6 @@ const CommunityPage = () => {
     const chatEndRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // ... (बाकी सभी functions जैसे useEffect, handleSendMessage, deleteMessage पहले जैसे ही रहेंगे) ...
     useEffect(() => {
         if (!db) return;
         const messagesRef = collection(db, 'community_messages');
@@ -51,40 +49,13 @@ const CommunityPage = () => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = async () => {
-        // ... (यह फंक्शन पहले जैसा ही है)
-    };
-
-    const deleteMessage = async (id) => {
-        // ... (यह फंक्शन पहले जैसा ही है)
-    };
-
-    // --- यहाँ बदलाव किया गया है ---
-    const clearChat = async () => {
-        if (!db) return;
-        if (window.confirm("Admin, are you sure you want to clear all messages for everyone? This action cannot be undone.")) {
-            setLoading(true);
-            const collectionRef = collection(db, 'community_messages');
-            
-            // onSnapshot की जगह getDocs का इस्तेमाल करें
-            const snapshot = await getDocs(collectionRef);
-            
-            // एक बैच में सभी डिलीट ऑपरेशन करें
-            const batch = writeBatch(db);
-            snapshot.docs.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-            
-            await batch.commit();
-            console.log("Chat cleared successfully for all users.");
-            // setLoading(false) की ज़रूरत नहीं है, क्योंकि onSnapshot अपने आप UI अपडेट कर देगा
-        }
-    };
+    const handleSendMessage = async () => { /* ... */ };
+    const deleteMessage = async (id) => { /* ... */ };
+    const clearChat = async () => { /* ... */ };
 
     return (
         <Card title="Community Hub" className="h-full flex flex-col">
-             {/* ... (बाकी का JSX कोड पहले जैसा ही रहेगा) ... */}
-             <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
                 <p className="text-gray-600 dark:text-gray-400">Share your thoughts and connect with others!</p>
                 {isAdmin && (
                     <ThemedButton onClick={clearChat} icon={Eraser} className="bg-red-500 hover:bg-red-600">
@@ -92,7 +63,50 @@ const CommunityPage = () => {
                     </ThemedButton>
                 )}
             </div>
-             {/* ... */}
+            <div className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900/50 p-4 rounded-xl shadow-inner overflow-y-auto mb-4 custom-scrollbar">
+                {loading ? <div className="m-auto"><p>Loading messages...</p></div> : messages.map(msg => {
+                    const isCurrentUser = msg.userId === currentUser?.uid;
+                    return (
+                        <div key={msg.id} className={`flex my-2 items-start gap-3 group ${isCurrentUser ? 'flex-row-reverse justify-end' : ''}`}>
+                            <Link to={`/profile/${msg.userId}`} title={`View ${msg.username}'s profile`}>
+                                <UserAvatar username={msg.username} />
+                            </Link>
+                            <div className={`p-3 rounded-lg max-w-[70%] break-words ${isCurrentUser ? `bg-${theme.primary} text-white` : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
+                                {!isCurrentUser && (
+                                    <Link to={`/profile/${msg.userId}`} className={`font-bold text-sm text-${theme.primary} mb-1 block hover:underline`}>
+                                        {msg.username}
+                                    </Link>
+                                )}
+                                
+                                {msg.type === 'image' && <img src={msg.fileUrl} alt={msg.fileName} className="rounded-lg mb-1 max-w-full h-auto cursor-pointer" onClick={()=> window.open(msg.fileUrl, '_blank')}/>}
+                                {msg.type === 'file' && (
+                                    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 mb-1 bg-gray-200 dark:bg-gray-600 rounded-lg">
+                                        <FileText size={24} />
+                                        <span className="text-sm font-medium truncate">{msg.fileName}</span>
+                                    </a>
+                                )}
+                                {msg.messageText && <p className="text-sm whitespace-pre-wrap">{msg.messageText}</p>}
+                                
+                                <div className={`text-xs mt-1.5 text-right ${isCurrentUser ? 'text-gray-200/70' : 'text-gray-500/70'}`}>{msg.timestamp}</div>
+                            </div>
+                            {(isCurrentUser || isAdmin) && (
+                                <button onClick={() => deleteMessage(msg.id)} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity self-center">
+                                    <Trash2 size={16}/>
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+                <div ref={chatEndRef} />
+            </div>
+            <div className="flex items-center space-x-3">
+                 <input type="file" ref={fileInputRef} onChange={(e) => { e.target.files[0] && setFile(e.target.files[0]); }} className="hidden"/>
+                 <button title="Attach File" onClick={() => fileInputRef.current.click()} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                     <Paperclip className="text-gray-600 dark:text-gray-300"/>
+                 </button>
+                 <input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !isUploading && handleSendMessage()} className="flex-1 p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500" disabled={isUploading}/>
+                 <ThemedButton onClick={handleSendMessage} icon={Send} disabled={isUploading || (!newMessage.trim() && !file)} />
+             </div>
         </Card>
     );
 };
