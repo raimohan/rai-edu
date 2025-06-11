@@ -7,7 +7,6 @@ import ThemedButton from '../components/common/ThemedButton';
 import CustomAlert from '../components/common/CustomAlert';
 import { LogOut, User, Mail, BookOpen, Globe, Trash2, Save } from 'lucide-react';
 
-// स्केलेटन लोडर कंपोनेंट
 const ProfileSkeleton = () => (
     <div className="animate-pulse">
         <div className="flex flex-col items-center space-y-4 mb-8">
@@ -62,14 +61,13 @@ const ProfilePage = () => {
         setProfileData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleUpdateProfile = async () => { /* ... (Same as before) ... */ 
+    const handleUpdateProfile = async () => {
         if (!profileData.username.trim()) {
             setAlertMessage("Username cannot be empty.");
             setShowAlert(true);
             return;
         }
         if (!currentUser || !db) return;
-
         try {
             const userDocRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userDocRef, {
@@ -85,13 +83,12 @@ const ProfilePage = () => {
             setShowAlert(true);
         }
     };
-    const handleDeleteAccount = async () => { /* ... (Same as before) ... */
+    const handleDeleteAccount = async () => {
         if (!passwordForDelete) {
             setDeleteError("Password is required to delete your account.");
             return;
         }
         setDeleteError('');
-
         try {
             const credential = EmailAuthProvider.credential(currentUser.email, passwordForDelete);
             await reauthenticateWithCredential(currentUser, credential);
@@ -107,7 +104,7 @@ const ProfilePage = () => {
             setDeleteError("Incorrect password or error deleting account.");
         }
     };
-    const handleLogout = async () => { /* ... (Same as before) ... */
+    const handleLogout = async () => {
         if (!auth) return;
         await signOut(auth);
     };
@@ -119,7 +116,6 @@ const ProfilePage = () => {
             <Card>
                 {isLoading ? <ProfileSkeleton /> : (
                     <>
-                        {/* --- Profile Header --- */}
                         <div className="flex flex-col items-center text-center mb-8">
                             <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-4xl font-bold text-gray-500 dark:text-gray-400 mb-4">
                                 {profileData.username.charAt(0).toUpperCase()}
@@ -128,27 +124,19 @@ const ProfilePage = () => {
                             <p className="text-sm text-gray-500 dark:text-gray-400">{profileData.email}</p>
                         </div>
 
-                        {/* --- Profile Form --- */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {/* Username */}
                             <div className="md:col-span-2">
                                 <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><User size={14} className="mr-2"/>Username</label>
                                 <input type="text" name="username" value={profileData.username} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"/>
                             </div>
-
-                            {/* About Me */}
                             <div className="md:col-span-2">
                                 <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">About Me</label>
                                 <textarea name="about" value={profileData.about} onChange={handleInputChange} rows="4" className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="Tell us something about yourself..."/>
                             </div>
-                            
-                             {/* Education */}
-                            <div>
+                             <div>
                                 <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><BookOpen size={14} className="mr-2"/>Education Qualification</label>
                                 <input type="text" name="education" value={profileData.education} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., B.Tech in Computer Science"/>
                             </div>
-
-                            {/* Country */}
                             <div>
                                 <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><Globe size={14} className="mr-2"/>Country</label>
                                 <select name="country" value={profileData.country} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600">
@@ -157,13 +145,10 @@ const ProfilePage = () => {
                                 </select>
                             </div>
                         </div>
-
                         <ThemedButton onClick={handleUpdateProfile} className="w-full mt-8" icon={Save}>Save Changes</ThemedButton>
                     </>
                 )}
             </Card>
-
-            {/* Account Actions Card */}
             <Card title="Account Actions" className="mt-6 border-t-4 border-red-500">
                  <div className="space-y-4">
                     <p className="text-sm text-gray-600 dark:text-gray-400">Manage your account or log out from here.</p>
@@ -175,9 +160,8 @@ const ProfilePage = () => {
                     </button>
                 </div>
             </Card>
-
             {showAlert && <CustomAlert message={alertMessage} onClose={() => setShowAlert(false)} />}
-            {showDeleteModal && ( /* ... (Modal code is the same as before) ... */ 
+            {showDeleteModal && (
                  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
                         <h3 className="text-xl font-semibold text-red-500 mb-4">Delete Account</h3>
