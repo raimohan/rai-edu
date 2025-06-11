@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookText, Calendar, MonitorPlay, ListTodo, LineChart, Settings, Bot, MessageSquare, UserCircle, Users } from 'lucide-react';
+// UsersRound आइकन इम्पोर्ट करें
+import { LayoutDashboard, BookText, Calendar, MonitorPlay, ListTodo, LineChart, Settings, Bot, MessageSquare, UserCircle, Users, UsersRound } from 'lucide-react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/FirebaseContext';
 import { useSoundEffect } from '../../hooks/useSoundEffect';
@@ -30,7 +31,6 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
 
     const handleLinkClick = () => {
         playClick();
-        // मोबाइल पर लिंक क्लिक होने पर साइडबार बंद करें
         if (window.innerWidth < 768) {
             toggleSidebar();
         }
@@ -45,6 +45,7 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
         { icon: LineChart, label: 'Progress Report', path: '/progress-report' },
         { icon: Bot, label: 'AI Assistant', path: '/ai-assistant' },
         { icon: MessageSquare, label: 'Community', path: '/community' },
+        { icon: UsersRound, label: 'Friends', path: '/friends' }, // <-- यहाँ नया लिंक जोड़ा गया है
         { icon: Users, label: 'User Manager', path: '/user-manager', adminOnly: true },
         { icon: UserCircle, label: 'Profile', path: '/profile' },
         { icon: Settings, label: 'Settings', path: '/settings' },
@@ -75,7 +76,7 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
                                 icon={item.icon}
                                 label={item.label}
                                 to={item.path}
-                                active={location.pathname === item.path}
+                                active={location.pathname.startsWith(item.path)} // .startsWith() का उपयोग करें ताकि /profile/USER_ID भी हाईलाइट हो
                                 onClick={handleLinkClick}
                             />
                         )
