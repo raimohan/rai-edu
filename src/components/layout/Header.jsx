@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Search, Bell, Menu } from 'lucide-react'; // Search आइकन वापस इम्पोर्ट करें
+import { Bell, Menu } from 'lucide-react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/FirebaseContext';
 
@@ -21,15 +21,8 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
     const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
     const usernameInitial = currentUser?.displayName?.charAt(0).toUpperCase() || currentUser?.email?.charAt(0).toUpperCase() || 'U';
 
-    // आइकन्स का JSX
     const HeaderIcons = () => (
         <div className="flex items-center space-x-4 md:space-x-6">
-            {/* नॉन-वर्किंग सर्च आइकन */}
-            <button onClick={() => alert('Search functionality will be added soon!')} className="text-gray-500 hover:text-blue-500 transition-colors">
-                <Search className="w-6 h-6" />
-            </button>
-
-            {/* नोटिफिकेशन आइकन */}
             <div className="relative cursor-pointer" onClick={() => setShowNotificationModal(true)}>
                 <Bell className="w-6 h-6 text-gray-500 hover:text-blue-500 transition-colors" />
                 {unreadCount > 0 && (
@@ -38,8 +31,6 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
                     </span>
                 )}
             </div>
-
-            {/* प्रोफ़ाइल आइकन */}
             <Link to="/profile" className="flex items-center space-x-3 cursor-pointer group">
                 <div className={`w-10 h-10 bg-${theme.light} rounded-full flex items-center justify-center text-${theme.text} font-semibold text-lg group-hover:ring-2 group-hover:ring-blue-500 transition-all`}>
                     {usernameInitial}
@@ -49,7 +40,6 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
         </div>
     );
 
-    // डैशबोर्ड पर पूरा हेडर
     if (isDashboard) {
         return (
             <header className="bg-white dark:bg-gray-800 p-4 shadow-sm z-10 flex items-center justify-between">
@@ -66,8 +56,8 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
 
     // बाकी पेजों पर सिर्फ कोने में आइकन्स
     return (
-        <div className="fixed top-4 right-4 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-2 rounded-full shadow-lg">
-             <div className="flex items-center">
+        <div className="fixed top-4 right-4 z-20">
+             <div className="flex items-center p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg">
                 <button onClick={toggleSidebar} className="md:hidden mr-2 text-gray-600 dark:text-gray-300">
                     <Menu size={24} />
                 </button>
