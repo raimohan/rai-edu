@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/FirebaseContext'; // <-- IMPORT THE NEW HOOK
+import { useAuth } from '../contexts/FirebaseContext';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { User, Mail, Lock } from 'lucide-react';
 
 const SignupPage = () => {
-    const { auth, db } = useAuth(); // <-- USE THE HOOK
+    const { auth, db } = useAuth();
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -23,28 +23,27 @@ const SignupPage = () => {
         if (username.length < 3) {
             return setError("Username must be at least 3 characters long.");
         }
-        if (!auth || !db) return; // Guard against auth/db not being ready
+        if (!auth || !db) return;
         setLoading(true);
         setError('');
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Update the user's Auth profile with the username
             await updateProfile(user, { displayName: username });
 
-            // Create the user's document in Firestore
             await setDoc(doc(db, "users", user.uid), {
                 username: username,
                 email: email,
-                role: 'user', // Default role for new users
+                role: 'user',
                 createdAt: serverTimestamp(),
                 about: `Hi, I'm ${username}!`,
                 education: '',
+                country: '',
                 status: 'online'
             });
 
-            navigate('/dashboard'); // Navigate to dashboard after sign up
+            navigate('/dashboard');
 
         } catch (err) {
             setError("Failed to create an account. The email might already be in use.");
