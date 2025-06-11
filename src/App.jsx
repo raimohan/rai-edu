@@ -28,7 +28,6 @@ import UserManagerPage from './pages/UserManagerPage';
 
 export const AppContext = createContext();
 
-// ProtectedRoute में कोई बदलाव नहीं
 const ProtectedRoute = ({ children }) => {
     const { currentUser, loading } = useAuth();
     if (loading) {
@@ -40,7 +39,6 @@ const ProtectedRoute = ({ children }) => {
     return children;
 };
 
-// MainAppLayout में साइडबार का लॉजिक जोड़ा गया है
 const MainAppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
@@ -59,7 +57,7 @@ const MainAppLayout = () => {
     const { playClick } = useSoundEffect();
 
     return (
-        <AppContext.Provider value={{ notifications, setNotifications }}>
+        <AppContext.Provider value={{ notifications, setNotifications, playClick }}>
             <div className="relative flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
                 <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
                 
@@ -74,7 +72,7 @@ const MainAppLayout = () => {
 
                 <main className="flex-1 flex flex-col transition-all duration-300">
                     <Header 
-                        toggleSidebar={toggleSidebar} 
+                        toggleSidebar={toggleSidebar}
                         notifications={notifications} 
                         setShowNotificationModal={setShowNotificationModal} 
                     />
@@ -95,12 +93,19 @@ const MainAppLayout = () => {
                         </Routes>
                     </section>
                 </main>
+                
+                {showNotificationModal && (
+                    <NotificationModal 
+                        notifications={notifications} 
+                        setNotifications={setNotifications} 
+                        onClose={() => { playClick(); setShowNotificationModal(false); }} 
+                    />
+                )}
             </div>
         </AppContext.Provider>
     );
 };
 
-// AppContent में कोई बदलाव नहीं
 const AppContent = () => {
     const { currentUser, loading } = useAuth();
     const [currentTheme, setCurrentTheme] = useState('blue');
@@ -131,7 +136,6 @@ const AppContent = () => {
     );
 };
 
-// App में कोई बदलाव नहीं
 const App = () => (
     <AuthProvider>
         <AppContent />
