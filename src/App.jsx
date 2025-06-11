@@ -91,6 +91,7 @@ const MainAppLayout = () => {
                             <Route path="/settings" element={<SettingsPage />} />
                             <Route path="/user-manager" element={<UserManagerPage />} />
                             <Route path="*" element={<Navigate to="/dashboard" />} />
+                            <Route path="/friends" element={<FriendsPage />} />
                         </Routes>
                     </section>
                 </main>
