@@ -1,18 +1,14 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 // Contexts & Components
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
-import { FirebaseContext } from './contexts/FirebaseContext';
-import { useSoundEffect } from './hooks/useSoundEffect'; // <-- Yeh file zaroori hai
+import { AuthProvider, useAuth } from './contexts/FirebaseContext'; // <-- AuthProvider और useAuth इम्पोर्ट करें
+import { useSoundEffect } from './hooks/useSoundEffect';
 import LoadingAnimation from './components/common/LoadingAnimation';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import NotificationModal from './components/common/NotificationModal';
-import { getFirebaseConfig } from './services/firebase';
 
 // Pages
 import GetStartedPage from './pages/GetStartedPage';
@@ -32,12 +28,25 @@ import UserManagerPage from './pages/UserManagerPage';
 
 export const AppContext = createContext();
 
-// Main App Layout
+// --- Protected Route Component ---
+const ProtectedRoute = ({ children }) => {
+    const { currentUser, loading } = useAuth();
+
+    if (loading) {
+        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
+    }
+
+    if (!currentUser) {
+        return <Navigate to="/welcome" replace />;
+    }
+
+    return children;
+};
+
+// --- Main App Layout ---
 const MainAppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [notifications, setNotifications] = useState([
-        { id: 1, message: 'Welcome to RaiEdu! Login successful.', read: false },
-    ]);
+    const [notifications, setNotifications] = useState([]);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const { playClick } = useSoundEffect();
 
@@ -46,10 +55,7 @@ const MainAppLayout = () => {
             <div className="flex h-screen bg-gray-100 dark:bg-gray-900 font-poppins text-gray-800 dark:text-gray-200">
                 <Sidebar />
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    <Header 
-                        notifications={notifications} 
-                        setShowNotificationModal={setShowNotificationModal} 
-                    />
+                    <Header notifications={notifications} setShowNotificationModal={setShowNotificationModal} />
                     <section className="flex-1 p-4 md:p-6 overflow-y-auto">
                         <Routes>
                             <Route path="/dashboard" element={<DashboardPage />} />
@@ -79,62 +85,47 @@ const MainAppLayout = () => {
     );
 };
 
-// Main App Component
-const App = () => {
+// --- This component holds the logic that depends on the Auth context ---
+const AppContent = () => {
+    const { currentUser, loading } = useAuth();
     const [currentTheme, setCurrentTheme] = useState('blue');
     const [darkMode, setDarkMode] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [db, setDb] = useState(null);
-    const [auth, setAuth] = useState(null);
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        const firebaseConfig = getFirebaseConfig();
-        if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            setDb(getFirestore(app));
-            setAuth(getAuth(app));
-        } else {
-            setIsLoading(false); 
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!auth) {
-            if(!isLoading && db) setIsLoading(false);
-            return;
-        };
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            setIsLoading(false);
-        });
-        return () => unsubscribe();
-    }, [auth, db, isLoading]);
-
+    
     useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
     }, [darkMode]);
 
-    if (isLoading) {
+    if (loading) {
         return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
     }
 
     const themeClass = themeColors[currentTheme];
 
     return (
-        <FirebaseContext.Provider value={{ db, auth, user }}>
-            <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
-                        <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/dashboard" />} />
-                        <Route path="/welcome" element={!user ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
-                        <Route path="/*" element={user ? <MainAppLayout /> : <Navigate to="/welcome" />} />
-                    </Routes>
-                </BrowserRouter>
-            </ThemeContext.Provider>
-        </FirebaseContext.Provider>
+        <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/login" element={!currentUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
+                    <Route path="/signup" element={!currentUser ? <SignupPage /> : <Navigate to="/dashboard" />} />
+                    <Route path="/welcome" element={!currentUser ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
+                    <Route path="/*" element={
+                        <ProtectedRoute>
+                            <MainAppLayout />
+                        </ProtectedRoute>
+                    } />
+                </Routes>
+            </BrowserRouter>
+        </ThemeContext.Provider>
+    );
+};
+
+// --- Final App Component ---
+const App = () => {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
 };
 
