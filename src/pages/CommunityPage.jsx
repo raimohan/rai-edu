@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/FirebaseContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
-import { Send, Paperclip, Trash2, XCircle, User, Image as ImageIcon, FileText, Broom } from 'lucide-react';
+// 'Broom' को 'Eraser' से बदला गया
+import { Send, Paperclip, Trash2, XCircle, User, Image as ImageIcon, FileText, Eraser } from 'lucide-react';
 
 const UserAvatar = ({ username }) => {
     const initial = username?.charAt(0).toUpperCase() || <User size={18} />;
@@ -60,12 +61,12 @@ const CommunityPage = () => {
         if (file) {
             setIsUploading(true);
             const storage = getStorage();
-            const storageRef = ref(storage, `community_files/<span class="math-inline">\{Date\.now\(\)\}\_</span>{file.name}`);
+            const storageRef = ref(storage, `community_files/${Date.now()}_${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
-            uploadTask.on('state_changed', 
-                (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100), 
-                (error) => { console.error("Upload failed:", error); setIsUploading(false); }, 
+            uploadTask.on('state_changed',
+                (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+                (error) => { console.error("Upload failed:", error); setIsUploading(false); },
                 () => {
                     getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
                         addDoc(collection(db, 'community_messages'), {
@@ -96,33 +97,35 @@ const CommunityPage = () => {
             await deleteDoc(doc(db, "community_messages", id));
         }
     };
-
+    
+    // एडमिन के लिए चैट क्लियर करने का फंक्शन
     const clearChat = async () => {
         if (!db) return;
         if (window.confirm("Admin, are you sure you want to clear all messages? This action cannot be undone.")) {
+            setLoading(true);
             const collectionRef = collection(db, 'community_messages');
             const q = query(collectionRef);
-
-            onSnapshot(q, (snapshot) => {
-                const batch = writeBatch(db);
-                snapshot.docs.forEach((doc) => {
-                    batch.delete(doc.ref);
-                });
-                batch.commit().then(() => {
-                    console.log("Chat cleared successfully.");
-                }).catch((error) => {
-                    console.error("Error clearing chat: ", error);
-                });
+            const snapshot = await getDocs(q); // Use getDocs for a one-time fetch
+            
+            const batch = writeBatch(db);
+            snapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
             });
+            
+            await batch.commit();
+            console.log("Chat cleared successfully.");
+            setLoading(false); // setLoading to false after operation
         }
     };
+
 
     return (
         <Card title="Community Hub" className="h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
                 <p className="text-gray-600 dark:text-gray-400">Share your thoughts and connect with others!</p>
                 {isAdmin && (
-                    <ThemedButton onClick={clearChat} icon={Broom} className="text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20">
+                    // 'Broom' को 'Eraser' से बदला गया
+                    <ThemedButton onClick={clearChat} icon={Eraser} className="bg-red-500 hover:bg-red-600">
                         Clear Chat
                     </ThemedButton>
                 )}
@@ -170,7 +173,7 @@ const CommunityPage = () => {
             )}
 
             <div className="flex items-center space-x-3">
-                <input type="file" ref={fileInputRef} onChange={(e) => { e.target.files && e.target.files.length > 0 && setFile(e.target.files [0]); }} className="hidden"/>
+                <input type="file" ref={fileInputRef} onChange={(e) => { e.target.files[0] && setFile(e.target.files[0]); }} className="hidden"/>
                 <button title="Attach File" onClick={() => fileInputRef.current.click()} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     <Paperclip className="text-gray-600 dark:text-gray-300"/>
                 </button>
