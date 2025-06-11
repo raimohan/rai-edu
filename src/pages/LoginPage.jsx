@@ -1,11 +1,11 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FirebaseContext } from '../contexts/FirebaseContext';
+import { useAuth } from '../contexts/FirebaseContext'; // <-- IMPORT THE NEW HOOK
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { Mail, Lock } from 'lucide-react';
 
 const LoginPage = () => {
-    const { auth } = useContext(FirebaseContext);
+    const { auth } = useAuth(); // <-- USE THE HOOK
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -14,18 +14,21 @@ const LoginPage = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        if (!auth) return; // Guard against auth not being ready yet
         setLoading(true);
         setError('');
         try {
             await signInWithEmailAndPassword(auth, email, password);
             navigate('/dashboard'); // Login ke baad dashboard par bhejo
         } catch (err) {
-            setError(err.message);
+            setError("Failed to log in. Please check your email and password.");
+            console.error(err);
         }
         setLoading(false);
     };
 
     const handleGoogleLogin = async () => {
+        if (!auth) return; // Guard against auth not being ready yet
         setLoading(true);
         setError('');
         const provider = new GoogleAuthProvider();
@@ -33,7 +36,8 @@ const LoginPage = () => {
             await signInWithPopup(auth, provider);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.message);
+            setError("Failed to log in with Google.");
+            console.error(err);
         }
         setLoading(false);
     };
