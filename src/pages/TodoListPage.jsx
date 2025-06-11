@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { FirebaseContext } from '../contexts/FirebaseContext';
+import { useAuth } from '../contexts/FirebaseContext'; // <-- नया हुक इम्पोर्ट करें
 import { ThemeContext } from '../contexts/ThemeContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
@@ -8,16 +8,17 @@ import { Plus, Trash2, Edit } from 'lucide-react';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 
 const TodoListPage = () => {
-    const { db, user } = useContext(FirebaseContext);
+    const { db, currentUser } = useAuth(); // <-- useAuth() का इस्तेमाल करें
     const { theme } = useContext(ThemeContext);
     const [tasks, setTasks] = useState([]);
     const [newTaskText, setNewTaskText] = useState('');
     const [newTaskDueDate, setNewTaskDueDate] = useState('');
 
-    // Firestore se tasks ko real-time me fetch karna
+    // Firestore से tasks को real-time में fetch करना
     useEffect(() => {
-        if (!user) return;
-        const tasksCollectionRef = collection(db, 'users', user.uid, 'tasks');
+        if (!currentUser || !db) return; // currentUser और db के उपलब्ध होने तक प्रतीक्षा करें
+        // हर यूजर के लिए अलग tasks का रास्ता
+        const tasksCollectionRef = collection(db, 'users', currentUser.uid, 'tasks');
         const q = query(tasksCollectionRef, orderBy('dueDate', 'asc'));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -29,12 +30,12 @@ const TodoListPage = () => {
         });
 
         return () => unsubscribe();
-    }, [db, user]);
+    }, [db, currentUser]); // Dependency में user की जगह currentUser
 
     const addTask = async (e) => {
         e.preventDefault();
-        if (newTaskText.trim() && newTaskDueDate && user) {
-            await addDoc(collection(db, 'users', user.uid, 'tasks'), {
+        if (newTaskText.trim() && newTaskDueDate && currentUser) {
+            await addDoc(collection(db, 'users', currentUser.uid, 'tasks'), {
                 text: newTaskText,
                 completed: false,
                 dueDate: newTaskDueDate,
@@ -46,18 +47,18 @@ const TodoListPage = () => {
     };
 
     const toggleTaskCompletion = async (id, currentStatus) => {
-        const taskDocRef = doc(db, 'users', user.uid, 'tasks', id);
+        const taskDocRef = doc(db, 'users', currentUser.uid, 'tasks', id);
         await updateDoc(taskDocRef, { completed: !currentStatus });
     };
 
     const deleteTask = async (id) => {
         if (window.confirm("Are you sure you want to delete this task?")) {
-            const taskDocRef = doc(db, 'users', user.uid, 'tasks', id);
+            const taskDocRef = doc(db, 'users', currentUser.uid, 'tasks', id);
             await deleteDoc(taskDocRef);
         }
     };
     
-    // Tasks ko date ke hisaab se group karne ka logic
+    // Tasks को date के हिसाब से group करने का logic
     const groupedTasks = tasks.reduce((acc, task) => {
         const date = parseISO(task.dueDate);
         let groupName;
@@ -119,7 +120,7 @@ const TodoListPage = () => {
                                             {task.text}
                                         </span>
                                         <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="text-gray-400 hover:text-blue-500"><Edit size={16} /></button> {/* Edit ka logic baad me add hoga */}
+                                            <button className="text-gray-400 hover:text-blue-500"><Edit size={16} /></button>
                                             <button onClick={() => deleteTask(task.id)} className="text-gray-400 hover:text-red-500"><Trash2 size={16} /></button>
                                         </div>
                                     </li>
