@@ -25,11 +25,23 @@ import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import UserManagerPage from './pages/UserManagerPage';
+import FriendsPage from './pages/FriendsPage'; // <-- यहाँ नया इम्पोर्ट जोड़ा गया है
 
 export const AppContext = createContext();
 
-// This component now correctly receives currentUser from ProtectedRoute
+const ProtectedRoute = ({ children }) => {
+    const { currentUser, loading } = useAuth();
+    if (loading) {
+        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
+    }
+    if (!currentUser) {
+        return <Navigate to="/welcome" replace />;
+    }
+    return children;
+};
+
 const MainAppLayout = () => {
+    const { currentUser } = useAuth(); // currentUser को यहाँ लाएं ताकि Navigate में इस्तेमाल हो सके
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
 
@@ -68,7 +80,8 @@ const MainAppLayout = () => {
                             <Route path="/ai-assistant" element={<GeminiAssistantPage />} />
                             <Route path="/community" element={<CommunityPage />} />
                             <Route path="/profile/:userId" element={<ProfilePage />} />
-                            <Route path="/profile" element={<Navigate to={`/profile/${useAuth().currentUser.uid}`} />} />
+                            {/* सुनिश्चित करें कि currentUser मौजूद है */}
+                            <Route path="/profile" element={currentUser ? <Navigate to={`/profile/${currentUser.uid}`} /> : <Navigate to="/login" />} />
                             <Route path="/friends" element={<FriendsPage />} />
                             <Route path="/settings" element={<SettingsPage />} />
                             <Route path="/user-manager" element={<UserManagerPage />} />
@@ -89,7 +102,6 @@ const MainAppLayout = () => {
     );
 };
 
-// This component checks for authentication and renders the correct pages
 const AppContent = () => {
     const { currentUser, loading } = useAuth();
     const [currentTheme, setCurrentTheme] = useState('blue');
@@ -104,44 +116,26 @@ const AppContent = () => {
         return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
     }
 
+    const themeClass = themeColors[currentTheme];
+
     return (
-        <ThemeContext.Provider value={{ theme: themeColors[currentTheme], currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
+        <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
             <BrowserRouter>
                 <Routes>
                     <Route path="/login" element={!currentUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
                     <Route path="/signup" element={!currentUser ? <SignupPage /> : <Navigate to="/dashboard" />} />
                     <Route path="/welcome" element={!currentUser ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
-                    <Route path="/*" element={
-                        <ProtectedRoute>
-                            <MainAppLayout />
-                        </ProtectedRoute>
-                    } />
+                    <Route path="/*" element={<ProtectedRoute><MainAppLayout /></ProtectedRoute>} />
                 </Routes>
             </BrowserRouter>
         </ThemeContext.Provider>
     );
 };
 
-// The root App component that wraps everything in the AuthProvider
 const App = () => (
     <AuthProvider>
         <AppContent />
     </AuthProvider>
 );
-
-// ProtectedRoute ensures that MainAppLayout is only rendered when a user is logged in
-const ProtectedRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth();
-
-    if (loading) {
-        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
-    }
-
-    if (!currentUser) {
-        return <Navigate to="/welcome" replace />;
-    }
-
-    return children;
-};
 
 export default App;
