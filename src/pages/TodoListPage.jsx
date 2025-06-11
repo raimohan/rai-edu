@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../contexts/FirebaseContext'; // <-- नया हुक इम्पोर्ट करें
+import { useAuth } from '../contexts/FirebaseContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
@@ -8,16 +8,14 @@ import { Plus, Trash2, Edit } from 'lucide-react';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 
 const TodoListPage = () => {
-    const { db, currentUser } = useAuth(); // <-- useAuth() का इस्तेमाल करें
+    const { db, currentUser } = useAuth();
     const { theme } = useContext(ThemeContext);
     const [tasks, setTasks] = useState([]);
     const [newTaskText, setNewTaskText] = useState('');
     const [newTaskDueDate, setNewTaskDueDate] = useState('');
 
-    // Firestore से tasks को real-time में fetch करना
     useEffect(() => {
-        if (!currentUser || !db) return; // currentUser और db के उपलब्ध होने तक प्रतीक्षा करें
-        // हर यूजर के लिए अलग tasks का रास्ता
+        if (!currentUser || !db) return;
         const tasksCollectionRef = collection(db, 'users', currentUser.uid, 'tasks');
         const q = query(tasksCollectionRef, orderBy('dueDate', 'asc'));
 
@@ -30,7 +28,7 @@ const TodoListPage = () => {
         });
 
         return () => unsubscribe();
-    }, [db, currentUser]); // Dependency में user की जगह currentUser
+    }, [db, currentUser]);
 
     const addTask = async (e) => {
         e.preventDefault();
@@ -58,22 +56,25 @@ const TodoListPage = () => {
         }
     };
     
-    // Tasks को date के हिसाब से group करने का logic
     const groupedTasks = tasks.reduce((acc, task) => {
-        const date = parseISO(task.dueDate);
-        let groupName;
-        if (isToday(date)) {
-            groupName = 'Today';
-        } else if (isTomorrow(date)) {
-            groupName = 'Tomorrow';
-        } else {
-            groupName = format(date, 'MMMM d, yyyy');
+        try {
+            const date = parseISO(task.dueDate);
+            let groupName;
+            if (isToday(date)) {
+                groupName = 'Today';
+            } else if (isTomorrow(date)) {
+                groupName = 'Tomorrow';
+            } else {
+                groupName = format(date, 'MMMM d, yyyy');
+            }
+            
+            if (!acc[groupName]) {
+                acc[groupName] = [];
+            }
+            acc[groupName].push(task);
+        } catch (error) {
+            console.error("Invalid date format for task:", task);
         }
-        
-        if (!acc[groupName]) {
-            acc[groupName] = [];
-        }
-        acc[groupName].push(task);
         return acc;
     }, {});
 
