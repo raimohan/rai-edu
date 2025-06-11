@@ -1,13 +1,12 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { useAuth } from '../contexts/FirebaseContext'; // <-- नया हुक
+import { useAuth } from '../contexts/FirebaseContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
-import { Send, Paperclip, Trash2, XCircle, User, Image as ImageIcon, FileText } from 'lucide-react';
+import { Send, Paperclip, Trash2, XCircle, User, Image as ImageIcon, FileText, Broom } from 'lucide-react';
 
-// User का अवतार बनाने के लिए एक हेल्पर कंपोनेंट
 const UserAvatar = ({ username }) => {
     const initial = username?.charAt(0).toUpperCase() || <User size={18} />;
     return (
@@ -17,9 +16,8 @@ const UserAvatar = ({ username }) => {
     );
 };
 
-
 const CommunityPage = () => {
-    const { db, currentUser, isAdmin } = useAuth(); // <-- नए हुक का इस्तेमाल
+    const { db, currentUser, isAdmin } = useAuth();
     const { theme } = useContext(ThemeContext);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -62,7 +60,7 @@ const CommunityPage = () => {
         if (file) {
             setIsUploading(true);
             const storage = getStorage();
-            const storageRef = ref(storage, `community_files/${Date.now()}_${file.name}`);
+            const storageRef = ref(storage, `community_files/<span class="math-inline">\{Date\.now\(\)\}\_</span>{file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             uploadTask.on('state_changed', 
@@ -75,7 +73,7 @@ const CommunityPage = () => {
                             fileUrl: downloadURL,
                             type: file.type.startsWith('image/') ? 'image' : 'file',
                             fileName: file.name,
-                            messageText: newMessage, // Attach message text with file
+                            messageText: newMessage,
                         });
                         setFile(null);
                         setNewMessage('');
@@ -83,7 +81,7 @@ const CommunityPage = () => {
                     });
                 }
             );
-        } else { // Handle text-only message
+        } else {
             await addDoc(collection(db, 'community_messages'), {
                 ...messageData,
                 messageText: newMessage,
@@ -99,15 +97,43 @@ const CommunityPage = () => {
         }
     };
 
+    const clearChat = async () => {
+        if (!db) return;
+        if (window.confirm("Admin, are you sure you want to clear all messages? This action cannot be undone.")) {
+            const collectionRef = collection(db, 'community_messages');
+            const q = query(collectionRef);
+
+            onSnapshot(q, (snapshot) => {
+                const batch = writeBatch(db);
+                snapshot.docs.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+                batch.commit().then(() => {
+                    console.log("Chat cleared successfully.");
+                }).catch((error) => {
+                    console.error("Error clearing chat: ", error);
+                });
+            });
+        }
+    };
+
     return (
         <Card title="Community Hub" className="h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+                <p className="text-gray-600 dark:text-gray-400">Share your thoughts and connect with others!</p>
+                {isAdmin && (
+                    <ThemedButton onClick={clearChat} icon={Broom} className="text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20">
+                        Clear Chat
+                    </ThemedButton>
+                )}
+            </div>
             <div className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900/50 p-4 rounded-xl shadow-inner overflow-y-auto mb-4 custom-scrollbar">
                 {loading ? <div className="m-auto"><p>Loading messages...</p></div> : messages.map(msg => {
                     const isCurrentUser = msg.userId === currentUser?.uid;
                     return (
-                        <div key={msg.id} className={`flex my-2 items-start gap-3 group ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                        <div key={msg.id} className={`flex my-2 items-start gap-3 group ${isCurrentUser ? 'flex-row-reverse justify-end' : ''}`}>
                             <UserAvatar username={msg.username} />
-                            <div className={`p-3 rounded-lg max-w-[70%] ${isCurrentUser ? `bg-${theme.primary} text-white` : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
+                            <div className={`p-3 rounded-lg max-w-[70%] break-words ${isCurrentUser ? `bg-${theme.primary} text-white` : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
                                 {!isCurrentUser && <div className={`font-bold text-sm text-${theme.primary} mb-1`}>{msg.username}</div>}
                                 
                                 {msg.type === 'image' && <img src={msg.fileUrl} alt={msg.fileName} className="rounded-lg mb-1 max-w-full h-auto cursor-pointer" onClick={()=> window.open(msg.fileUrl, '_blank')}/>}
@@ -144,7 +170,7 @@ const CommunityPage = () => {
             )}
 
             <div className="flex items-center space-x-3">
-                <input type="file" ref={fileInputRef} onChange={(e) => { e.target.files[0] && setFile(e.target.files[0]); }} className="hidden"/>
+                <input type="file" ref={fileInputRef} onChange={(e) => { e.target.files && e.target.files.length > 0 && setFile(e.target.files [0]); }} className="hidden"/>
                 <button title="Attach File" onClick={() => fileInputRef.current.click()} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     <Paperclip className="text-gray-600 dark:text-gray-300"/>
                 </button>
