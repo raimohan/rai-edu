@@ -1,45 +1,36 @@
-import React, { useContext, useState, useEffect } from 'react';
-import { auth, db } from '../services/firebase'; // Make sure this path is correct
+// src/contexts/FirebaseContext.js
+
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../services/firebase'; // <-- Import the initialized services
+import LoadingAnimation from '../components/common/LoadingAnimation'; 
 
-// A component to show while checking for user login status
-const LoadingScreen = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Loading...</p>
-    </div>
-);
-
-
-// 1. Create the context
+// --- Create the Context ---
 const AuthContext = React.createContext();
 
-// 2. Create a custom hook for easy access to the context
+// --- Create a custom hook for easy access ---
 export function useAuth() {
     return useContext(AuthContext);
 }
 
-// 3. Create the Provider component
+// --- Create the Provider Component ---
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // This listener fires when the user logs in or out
+        // This listener from Firebase handles user login/logout state.
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user) {
-                // If a user is logged in, check their 'role' in the 'users' collection
+                // If user is logged in, check their role in Firestore
                 const userDocRef = doc(db, 'users', user.uid);
                 const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists() && userDoc.data().role === 'admin') {
-                    setIsAdmin(true);
-                } else {
-                    setIsAdmin(false);
-                }
+                setIsAdmin(userDoc.exists() && userDoc.data().role === 'admin');
             } else {
-                // No user is logged in
+                // No user is logged in, so they can't be an admin
                 setIsAdmin(false);
             }
             setLoading(false);
@@ -47,17 +38,18 @@ export function AuthProvider({ children }) {
 
         // Cleanup the listener when the component unmounts
         return unsubscribe;
-    }, []);
+    }, []); // Empty dependency array ensures this runs only once
 
-    // The values to be shared with all child components
-    const value = {
+    // useMemo prevents unnecessary re-renders of components that consume the context
+    const value = useMemo(() => ({
         currentUser,
         isAdmin,
-    };
+        loading,
+    }), [currentUser, isAdmin, loading]);
 
     return (
         <AuthContext.Provider value={value}>
-            {loading ? <LoadingScreen /> : children}
-        </AuthContext.Provider>
+            {loading ? <LoadingAnimation /> : children}
+        </Auth-Context.Provider>
     );
-}
+        }
