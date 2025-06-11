@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, BookText, Calendar, MonitorPlay, ListTodo, LineChart, Settings, Bot, MessageSquare, UserCircle, Users } from 'lucide-react';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import { FirebaseContext } from '../../contexts/FirebaseContext';
-import { doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '../../contexts/FirebaseContext'; // <-- IMPORT THE NEW HOOK
 import { useSoundEffect } from '../../hooks/useSoundEffect';
 
 const SidebarMenuItem = ({ icon: Icon, label, to, active }) => {
@@ -25,24 +24,12 @@ const SidebarMenuItem = ({ icon: Icon, label, to, active }) => {
 
 const Sidebar = () => {
     const { theme } = useContext(ThemeContext);
-    const { db, user } = useContext(FirebaseContext);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const { isAdmin } = useAuth(); // <-- USE THE HOOK TO GET ADMIN STATUS
     const location = useLocation();
 
-    useEffect(() => {
-        const checkAdminRole = async () => {
-            if (user) {
-                const userDocRef = doc(db, 'users', user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
-                    setIsAdmin(true);
-                }
-            }
-        };
-        checkAdminRole();
-    }, [user, db]);
+    // The logic to check for admin is no longer needed here.
+    // We removed about 15 lines of useState and useEffect code.
 
-    // Poori menu list
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: BookText, label: 'Class Notes', path: '/class-notes' },
@@ -52,7 +39,7 @@ const Sidebar = () => {
         { icon: LineChart, label: 'Progress Report', path: '/progress-report' },
         { icon: Bot, label: 'AI Assistant', path: '/ai-assistant' },
         { icon: MessageSquare, label: 'Community', path: '/community' },
-        { icon: Users, label: 'User Manager', path: '/user-manager', adminOnly: true }, // Admin ke liye
+        { icon: Users, label: 'User Manager', path: '/user-manager', adminOnly: true }, // Admin link
         { icon: UserCircle, label: 'Profile', path: '/profile' },
         { icon: Settings, label: 'Settings', path: '/settings' },
     ];
@@ -69,8 +56,9 @@ const Sidebar = () => {
             <nav className="flex-1">
                 <ul>
                     {menuItems.map(item => {
+                        // This rendering logic now works perfectly with the isAdmin value from our hook.
                         if (item.adminOnly && !isAdmin) {
-                            return null; // Agar link sirf admin ke liye hai aur user admin nahi hai, to kuch na dikhayein
+                            return null;
                         }
                         return (
                             <SidebarMenuItem
@@ -84,6 +72,11 @@ const Sidebar = () => {
                     })}
                 </ul>
             </nav>
+        </aside>
+    );
+};
+
+export default Sidebar;     </nav>
         </aside>
     );
 };
