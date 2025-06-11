@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/FirebaseContext'; // <-- IMPORT THE NEW HOOK
+import { useAuth } from '../contexts/FirebaseContext';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { Mail, Lock } from 'lucide-react';
 
 const LoginPage = () => {
-    const { auth } = useAuth(); // <-- USE THE HOOK
+    const { auth } = useAuth();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -14,12 +14,12 @@ const LoginPage = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        if (!auth) return; // Guard against auth not being ready yet
+        if (!auth) return;
         setLoading(true);
         setError('');
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            navigate('/dashboard'); // Login ke baad dashboard par bhejo
+            navigate('/dashboard');
         } catch (err) {
             setError("Failed to log in. Please check your email and password.");
             console.error(err);
@@ -28,7 +28,7 @@ const LoginPage = () => {
     };
 
     const handleGoogleLogin = async () => {
-        if (!auth) return; // Guard against auth not being ready yet
+        if (!auth) return;
         setLoading(true);
         setError('');
         const provider = new GoogleAuthProvider();
