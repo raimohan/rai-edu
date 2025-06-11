@@ -23,8 +23,8 @@ const getFirebaseConfig = () => {
 
 const firebaseConfig = getFirebaseConfig();
 
-// Initialize Firebase App only if it hasn't been initialized yet
-// This prevents errors during hot-reloads in development
+// Initialize Firebase App only if it hasn't been initialized yet.
+// This prevents errors during hot-reloads in development.
 const app = getApps().length === 0 && firebaseConfig ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Export Firebase services to be used in other parts of the app
