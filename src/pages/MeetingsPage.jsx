@@ -37,7 +37,7 @@ const MeetingsPage = () => {
 
     return (
         <Card title="Meeting Links" className="h-full flex flex-col">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Yahan sabhi zaroori meeting links milenge.</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4"></p>
 
             {isAdmin && (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-gray-800 rounded-xl">
