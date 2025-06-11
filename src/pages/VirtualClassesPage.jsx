@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from '../contexts/FirebaseContext'; // <-- नया हुक इम्पोर्ट करें
+import { useAuth } from '../contexts/FirebaseContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
 import { Youtube, Play, Clock, Trash2, Plus } from 'lucide-react';
 
 const VirtualClassesPage = () => {
-    // नए हुक से हमें ज़रूरत की हर चीज़ मिल जाएगी
     const { db, isAdmin } = useAuth();
     const [classes, setClasses] = useState([]);
-    
-    // एडमिन फॉर्म का स्टेट
     const [classType, setClassType] = useState('live');
     const [title, setTitle] = useState('');
     const [teacher, setTeacher] = useState('');
     const [time, setTime] = useState('');
     const [link, setLink] = useState('');
 
-    // एडमिन रोल चेक करने वाला पुराना लॉजिक अब यहाँ से हटा दिया गया है।
-
-    // क्लास की लिस्ट को रियल-टाइम में लाना
     useEffect(() => {
         if (!db) return;
         const classesRef = collection(db, 'virtual_classes');
@@ -30,14 +24,12 @@ const VirtualClassesPage = () => {
         return () => unsubscribe();
     }, [db]);
     
-    // YouTube वीडियो ID निकालने का फंक्शन
     const getYouTubeVideoId = (url) => {
         const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
         const match = url.match(regExp);
         return (match && match[1]) ? match[1] : null;
     };
 
-    // नई क्लास जोड़ने का फंक्शन
     const handleAddClass = async () => {
         if (!title.trim() || !link.trim() || !db) return;
 
@@ -56,16 +48,13 @@ const VirtualClassesPage = () => {
                 alert("Please enter a valid YouTube video URL.");
                 return;
             }
-            // YouTube embed लिंक को ठीक किया गया
             classData.link = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1`;
         }
 
         await addDoc(collection(db, 'virtual_classes'), classData);
-        // फॉर्म रीसेट करें
         setTitle(''); setTeacher(''); setTime(''); setLink('');
     };
 
-    // क्लास डिलीट करने का फंक्शन
     const handleDeleteClass = async (id) => {
         if (!db) return;
         await deleteDoc(doc(db, "virtual_classes", id));
@@ -73,7 +62,6 @@ const VirtualClassesPage = () => {
 
     return (
         <Card title="Virtual Classes" className="h-full flex flex-col">
-             {/* यह फॉर्म अब सिर्फ एडमिन को दिखेगा */}
              {isAdmin && (
                 <div className="mb-6 p-4 bg-green-50 dark:bg-gray-800 rounded-xl">
                     <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Admin Panel: Add New Class</h4>
