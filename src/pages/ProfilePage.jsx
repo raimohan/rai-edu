@@ -84,7 +84,6 @@ const ProfilePage = () => {
         }
         if (!currentUser || !db) return;
 
-        // 15-दिन का नेम चेंज लॉक लॉजिक
         if (profileData.usernameLastChanged) {
             const lastChangedDate = profileData.usernameLastChanged.toDate();
             const daysSinceLastChange = differenceInDays(new Date(), lastChangedDate);
@@ -102,7 +101,7 @@ const ProfilePage = () => {
                 about: profileData.about,
                 education: profileData.education,
                 country: profileData.country,
-                usernameLastChanged: serverTimestamp() // तारीख अपडेट करें
+                usernameLastChanged: serverTimestamp()
             });
             setAlertMessage("Profile updated successfully!");
             setShowAlert(true);
@@ -113,7 +112,7 @@ const ProfilePage = () => {
     };
 
     const handleDeactivate = async () => {
-        if (window.confirm("Are you sure you want to deactivate your account? Your profile will be hidden from others.")) {
+        if (window.confirm("Are you sure you want to change your account status?")) {
             const newStatus = profileData.status === 'active' ? 'deactivated' : 'active';
             const userDocRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userDocRef, { status: newStatus });
@@ -122,8 +121,32 @@ const ProfilePage = () => {
         }
     };
 
-    const handleDeleteAccount = async () => { /* ... (Same as before) ... */ };
-    const handleLogout = async () => { /* ... (Same as before) ... */ };
+    const handleDeleteAccount = async () => {
+        if (!passwordForDelete) {
+            setDeleteError("Password is required to delete your account.");
+            return;
+        }
+        setDeleteError('');
+        try {
+            const credential = EmailAuthProvider.credential(currentUser.email, passwordForDelete);
+            await reauthenticateWithCredential(currentUser, credential);
+            if (window.confirm("ARE YOU ABSOLUTELY SURE? This action is irreversible and will delete all your data permanently.")) {
+                await deleteDoc(doc(db, "users", currentUser.uid));
+                await deleteUser(currentUser);
+            } else {
+                setShowDeleteModal(false);
+                setPasswordForDelete('');
+            }
+        } catch (error) {
+            console.error(error);
+            setDeleteError("Incorrect password or error deleting account.");
+        }
+    };
+
+    const handleLogout = async () => {
+        if (!auth) return;
+        await signOut(auth);
+    };
 
     const firstLetter = profileData.username ? profileData.username.charAt(0).toUpperCase() : (currentUser?.email?.charAt(0).toUpperCase() || 'U');
     
@@ -169,6 +192,7 @@ const ProfilePage = () => {
 
             <Card title="Account Actions" className="mt-6 border-t-4 border-yellow-500">
                  <div className="space-y-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Manage your account or log out from here.</p>
                     <button onClick={handleDeactivate} className={`w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition-colors ${profileData.status === 'active' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}>
                         <EyeOff size={18}/> {profileData.status === 'active' ? 'Deactivate Account' : 'Re-activate Account'}
                     </button>
@@ -182,7 +206,22 @@ const ProfilePage = () => {
             </Card>
 
             {showAlert && <CustomAlert message={alertMessage} onClose={() => setShowAlert(false)} />}
-            {showDeleteModal && ( /* ... (Modal is the same) ... */ )}
+            
+            {/* Delete Account Modal */}
+            {showDeleteModal && (
+                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+                        <h3 className="text-xl font-semibold text-red-500 mb-4">Delete Account</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">This is a permanent action. To confirm, please enter your password.</p>
+                        <input type="password" value={passwordForDelete} onChange={(e) => setPasswordForDelete(e.target.value)} placeholder="Enter your password" className="w-full p-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" />
+                        {deleteError && <p className="text-red-500 text-xs mt-2">{deleteError}</p>}
+                        <div className="flex justify-end space-x-3 mt-6">
+                            <button onClick={() => setShowDeleteModal(false)} className="px-5 py-2 rounded-lg text-gray-700 border border-gray-300 hover:bg-gray-100 dark:text-gray-300 dark:border-gray-500 dark:hover:bg-gray-700">Cancel</button>
+                            <button onClick={handleDeleteAccount} className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Confirm & Delete</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
