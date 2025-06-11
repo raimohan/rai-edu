@@ -1,10 +1,8 @@
-// src/contexts/FirebaseContext.js
-
 import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase'; // <-- Import the initialized services
-import LoadingAnimation from '../components/common/LoadingAnimation'; 
+import { auth, db } from '../services/firebase'; // Make sure this path is correct
+import LoadingAnimation from '../components/common/LoadingAnimation'; // Make sure this path is correct
 
 // --- Create the Context ---
 const AuthContext = React.createContext();
@@ -52,4 +50,4 @@ export function AuthProvider({ children }) {
             {loading ? <LoadingAnimation /> : children}
         </AuthContext.Provider>
     );
-        }
+}
