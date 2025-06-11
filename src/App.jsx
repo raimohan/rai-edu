@@ -28,22 +28,11 @@ import UserManagerPage from './pages/UserManagerPage';
 
 export const AppContext = createContext();
 
-const ProtectedRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth();
-    if (loading) {
-        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
-    }
-    if (!currentUser) {
-        return <Navigate to="/welcome" replace />;
-    }
-    return children;
-};
-
+// This component now correctly receives currentUser from ProtectedRoute
 const MainAppLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
 
-    // जब भी यूजर नए पेज पर जाएगा, साइडबार बंद हो जाएगा
     useEffect(() => {
         setIsSidebarOpen(false);
     }, [location.pathname]);
@@ -60,15 +49,7 @@ const MainAppLayout = () => {
         <AppContext.Provider value={{ notifications, setNotifications, playClick }}>
             <div className="relative flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
                 <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-                
-                {/* मोबाइल पर साइडबार खुला होने पर डार्क ओवरले */}
-                {isSidebarOpen && (
-                    <div 
-                        onClick={toggleSidebar} 
-                        className="fixed inset-0 bg-black/60 z-30 md:hidden"
-                        aria-hidden="true"
-                    ></div>
-                )}
+                {isSidebarOpen && <div onClick={toggleSidebar} className="fixed inset-0 bg-black/60 z-30 md:hidden" aria-hidden="true"></div>}
 
                 <main className="flex-1 flex flex-col transition-all duration-300">
                     <Header 
@@ -87,11 +68,11 @@ const MainAppLayout = () => {
                             <Route path="/ai-assistant" element={<GeminiAssistantPage />} />
                             <Route path="/community" element={<CommunityPage />} />
                             <Route path="/profile/:userId" element={<ProfilePage />} />
-                            <Route path="/profile" element={<Navigate to={`/profile/${currentUser.uid}`} />} />
+                            <Route path="/profile" element={<Navigate to={`/profile/${useAuth().currentUser.uid}`} />} />
+                            <Route path="/friends" element={<FriendsPage />} />
                             <Route path="/settings" element={<SettingsPage />} />
                             <Route path="/user-manager" element={<UserManagerPage />} />
                             <Route path="*" element={<Navigate to="/dashboard" />} />
-                            <Route path="/friends" element={<FriendsPage />} />
                         </Routes>
                     </section>
                 </main>
@@ -108,6 +89,7 @@ const MainAppLayout = () => {
     );
 };
 
+// This component checks for authentication and renders the correct pages
 const AppContent = () => {
     const { currentUser, loading } = useAuth();
     const [currentTheme, setCurrentTheme] = useState('blue');
@@ -122,26 +104,44 @@ const AppContent = () => {
         return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
     }
 
-    const themeClass = themeColors[currentTheme];
-
     return (
-        <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
+        <ThemeContext.Provider value={{ theme: themeColors[currentTheme], currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
             <BrowserRouter>
                 <Routes>
                     <Route path="/login" element={!currentUser ? <LoginPage /> : <Navigate to="/dashboard" />} />
                     <Route path="/signup" element={!currentUser ? <SignupPage /> : <Navigate to="/dashboard" />} />
                     <Route path="/welcome" element={!currentUser ? <GetStartedPage /> : <Navigate to="/dashboard" />} />
-                    <Route path="/*" element={<ProtectedRoute><MainAppLayout /></ProtectedRoute>} />
+                    <Route path="/*" element={
+                        <ProtectedRoute>
+                            <MainAppLayout />
+                        </ProtectedRoute>
+                    } />
                 </Routes>
             </BrowserRouter>
         </ThemeContext.Provider>
     );
 };
 
+// The root App component that wraps everything in the AuthProvider
 const App = () => (
     <AuthProvider>
         <AppContent />
     </AuthProvider>
 );
+
+// ProtectedRoute ensures that MainAppLayout is only rendered when a user is logged in
+const ProtectedRoute = ({ children }) => {
+    const { currentUser, loading } = useAuth();
+
+    if (loading) {
+        return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
+    }
+
+    if (!currentUser) {
+        return <Navigate to="/welcome" replace />;
+    }
+
+    return children;
+};
 
 export default App;
