@@ -50,6 +50,6 @@ export function AuthProvider({ children }) {
     return (
         <AuthContext.Provider value={value}>
             {loading ? <LoadingAnimation /> : children}
-        </Auth-Context.Provider>
+        </AuthContext.Provider>
     );
         }
