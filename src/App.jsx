@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-
-// Contexts & Components
 import { ThemeContext, themeColors } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/FirebaseContext';
 import { useSoundEffect } from './hooks/useSoundEffect';
@@ -9,6 +7,7 @@ import LoadingAnimation from './components/common/LoadingAnimation';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import NotificationModal from './components/common/NotificationModal';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'; // onSnapshot इम्पोर्ट करें
 
 // Pages
 import GetStartedPage from './pages/GetStartedPage';
@@ -26,7 +25,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import UserManagerPage from './pages/UserManagerPage';
 import FriendsPage from './pages/FriendsPage';
-import ChatPage from './pages/ChatPage'; // <-- यहाँ नया पेज इम्पोर्ट करें
+import ChatPage from './pages/ChatPage';
 
 export const AppContext = createContext();
 
@@ -42,22 +41,37 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const MainAppLayout = () => {
-    const { currentUser } = useAuth();
+    const { db, currentUser } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
-
-    useEffect(() => {
-        setIsSidebarOpen(false);
-    }, [location.pathname]);
-
-    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
     const [notifications, setNotifications] = useState([]);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
-    const { playClick } = useSoundEffect();
+    const { playClick, playNotification } = useSoundEffect();
+
+    useEffect(() => { setIsSidebarOpen(false); }, [location.pathname]);
+    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+    // रियल-टाइम में नोटिफिकेशन सुनना
+    useEffect(() => {
+        if (!db || !currentUser) return;
+        const notifRef = collection(db, 'notifications');
+        const q = query(notifRef, where("recipientId", "==", currentUser.uid), orderBy("createdAt", "desc"));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // यह जांचें कि क्या कोई नया, अनरीड नोटिफिकेशन आया है
+            if (snapshot.docChanges().some(change => change.type === 'added' && !change.doc.data().isRead)) {
+                playNotification(); // सिर्फ नए नोटिफिकेशन पर साउंड प्ले करें
+            }
+            setNotifications(notifs);
+        });
+
+        return () => unsubscribe();
+    }, [db, currentUser, playNotification]);
 
     return (
-        <AppContext.Provider value={{ notifications, setNotifications, playClick }}>
+        <AppContext.Provider value={{ playClick }}>
             <div className="relative flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
                 <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
                 {isSidebarOpen && <div onClick={toggleSidebar} className="fixed inset-0 bg-black/60 z-30 md:hidden" aria-hidden="true"></div>}
@@ -82,18 +96,12 @@ const MainAppLayout = () => {
                             <Route path="/friends" element={<FriendsPage />} />
                             <Route path="/settings" element={<SettingsPage />} />
                             <Route path="/user-manager" element={<UserManagerPage />} />
-                            <Route path="/chat/:chatId" element={<ChatPage />} /> {/* <-- यहाँ नया रूट जोड़ें */}
+                            <Route path="/chat/:chatId" element={<ChatPage />} />
                             <Route path="*" element={<Navigate to="/dashboard" />} />
                         </Routes>
                     </section>
                 </main>
-                {showNotificationModal && (
-                    <NotificationModal 
-                        notifications={notifications} 
-                        setNotifications={setNotifications} 
-                        onClose={() => { playClick(); setShowNotificationModal(false); }} 
-                    />
-                )}
+                {showNotificationModal && <NotificationModal notifications={notifications} onClose={() => setShowNotificationModal(false)} />}
             </div>
         </AppContext.Provider>
     );
@@ -113,7 +121,7 @@ const AppContent = () => {
         return <div className="fixed inset-0 bg-white dark:bg-black flex items-center justify-center"><LoadingAnimation /></div>;
     }
 
-    const themeClass = themeColors[currentTheme];
+    const themeClass = themeColors[currentTheme] || themeColors['blue'];
 
     return (
         <ThemeContext.Provider value={{ theme: themeClass, currentTheme, setCurrentTheme, darkMode, setDarkMode }}>
