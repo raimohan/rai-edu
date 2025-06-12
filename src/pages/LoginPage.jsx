@@ -5,30 +5,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
-// Assuming your FirebaseContext provides auth and db
-import { useAuth } from '../contexts/FirebaseContext';
+import { useAuth } from '../contexts/FirebaseContext'; // Correctly using useAuth from your context
 
-// Shared CSS for background animations - move this to a global CSS file or App.jsx for reusability
-const backgroundAnimationsCSS = `
-  @keyframes float {
-    0% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
-    33% { transform: translateY(-20px) translateX(10px) rotate(15deg); opacity: 0.9; }
-    66% { transform: translateY(20px) translateX(-10px) rotate(-15deg); opacity: 0.7; }
-    100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(0.9); opacity: 0.5; }
-    50% { transform: scale(1.1); opacity: 0.7; }
-    100% { transform: scale(0.9); opacity: 0.5; }
-  }
-
-  @keyframes glow {
-    0% { filter: blur(20px); opacity: 0.3; }
-    50% { filter: blur(30px); opacity: 0.5; }
-    100% { filter: blur(20px); opacity: 0.3; }
-  }
-`;
+// backgroundAnimationsCSS removed from here and moved to src/index.css
 
 function LoginPage() {
   const { auth, db } = useAuth(); // Get auth and db from context
@@ -44,7 +23,7 @@ function LoginPage() {
     setMessage('');
     setLoading(true);
     try {
-      if (!auth) throw new Error("Firebase Auth not initialized.");
+      if (!auth) throw new Error("Firebase Auth not initialized. Please refresh the page.");
 
       await signInWithEmailAndPassword(auth, email, password);
       setMessage('Login successful!');
@@ -79,7 +58,7 @@ function LoginPage() {
     setMessage('');
     setLoading(true);
     try {
-      if (!auth || !db) throw new Error("Firebase services not initialized.");
+      if (!auth || !db) throw new Error("Firebase services not initialized. Please refresh the page.");
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -115,10 +94,10 @@ function LoginPage() {
       if (error.code) {
         switch (error.code) {
           case 'auth/popup-closed-by-user':
-            errorMessage = "Google login popup was closed.";
+            errorMessage = "Google login popup was closed. Please try again.";
             break;
           case 'auth/cancelled-popup-request':
-            errorMessage = "Google login already in progress.";
+            errorMessage = "Google login already in progress. Please wait.";
             break;
           case 'auth/network-request-failed':
             errorMessage = "Network error. Check your internet connection.";
@@ -139,10 +118,9 @@ function LoginPage() {
     }
   };
 
-
   return (
     <div className="min-h-screen bg-blue-100 text-gray-800 flex flex-col items-center justify-between p-4 font-inter relative overflow-hidden">
-      <style>{backgroundAnimationsCSS}</style>
+      {/* <style>{backgroundAnimationsCSS}</style> Removed from here */}
 
       {/* Animated Background Elements */}
       <div className="absolute inset-0 z-0">
@@ -228,7 +206,6 @@ function LoginPage() {
               <img src="https://www.google.com/favicon.ico" alt="Google icon" className="w-5 h-5 mr-3"/>
               Login with Google
           </button>
-
 
           <p className="text-center text-sm mt-2 text-gray-600">
             Don't have an account? <Link to="/signup" className="text-blue-700 hover:underline">Sign Up</Link>
