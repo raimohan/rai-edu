@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { signOut, EmailAuthProvider, reauthenticateWithCredential, deleteUser, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, setDoc, getDoc, query, where, getDocs, writeBatch, arrayUnion, arrayRemove, collection } from 'firebase/firestore';
 import { useAuth } from '../contexts/FirebaseContext';
@@ -43,7 +43,11 @@ const ProfilePage = () => {
     const [deleteError, setDeleteError] = useState('');
 
     useEffect(() => {
-        if (!userId || !db || !currentUser) { setIsLoading(false); return; }
+        if (!userId || !db || !currentUser) {
+            setIsLoading(false);
+            return;
+        }
+
         const ownProfileCheck = currentUser.uid === userId;
         setIsOwnProfile(ownProfileCheck);
 
@@ -106,12 +110,12 @@ const ProfilePage = () => {
     };
     const handleInputChange = (e) => setEditableProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     const handleUpdateProfile = async () => {
-        if (!editableProfileData.username.trim()) { setAlertMessage("Username required."); setShowAlert(true); return; }
+        if (!editableProfileData.username.trim()) { setAlertMessage("Username cannot be empty."); setShowAlert(true); return; }
         const currentUsername = currentUser.displayName;
         if (!isAdmin && currentUsername !== editableProfileData.username) {
             if (editableProfileData.usernameLastChanged) {
                 const daysSince = differenceInDays(new Date(), editableProfileData.usernameLastChanged.toDate());
-                if (daysSince < 15) { setAlertMessage(`You can change username again in ${15 - daysSince} days.`); setShowAlert(true); return; }
+                if (daysSince < 15) { setAlertMessage(`You can change your username again in ${15 - daysSince} days.`); setShowAlert(true); return; }
             }
         }
         try {
@@ -121,8 +125,10 @@ const ProfilePage = () => {
                 education: editableProfileData.education, country: editableProfileData.country,
                 ...(currentUsername !== editableProfileData.username && { usernameLastChanged: serverTimestamp() })
             });
-            if (currentUsername !== editableProfileData.username) await updateAuthProfile(currentUser, { displayName: editableProfileData.username });
-            setAlertMessage("Profile updated!"); setShowAlert(true);
+            if (currentUsername !== editableProfileData.username) {
+                await updateAuthProfile(currentUser, { displayName: editableProfileData.username });
+            }
+            setAlertMessage("Profile updated successfully!"); setShowAlert(true);
         } catch (e) { setAlertMessage(`Error: ${e.message}`); }
     };
     const handleDeactivate = async () => {
@@ -133,15 +139,16 @@ const ProfilePage = () => {
         }
     };
     const handleDeleteAccount = async () => {
-        if (!passwordForDelete) { setDeleteError("Password needed."); return; }
+        if (!passwordForDelete) { setDeleteError("Password is required."); return; }
         setDeleteError('');
         try {
-            await reauthenticateWithCredential(currentUser, EmailAuthProvider.credential(currentUser.email, passwordForDelete));
-            if (window.confirm("ARE YOU SURE? This action is permanent and will delete all your data.")) {
+            const credential = EmailAuthProvider.credential(currentUser.email, passwordForDelete);
+            await reauthenticateWithCredential(currentUser, credential);
+            if (window.confirm("ARE YOU ABSOLUTELY SURE? This is permanent.")) {
                 await deleteDoc(doc(db, "users", currentUser.uid));
                 await deleteUser(currentUser);
             } else { setShowDeleteModal(false); setPasswordForDelete(''); }
-        } catch (e) { setDeleteError("Incorrect password."); }
+        } catch (e) { setDeleteError("Incorrect password or error deleting account."); }
     };
     const handleLogout = async () => { await signOut(auth); };
 
@@ -159,7 +166,7 @@ const ProfilePage = () => {
     };
 
     if (isOwnProfile) {
-        if (!editableProfileData) return <ProfileSkeleton />; // अतिरिक्त सुरक्षा जांच
+        if (!editableProfileData) return <ProfileSkeleton />; // सुरक्षा जांच
         return (
             <>
                 <Card>
@@ -174,14 +181,15 @@ const ProfilePage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2"><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><User size={14} className="mr-2"/>Username</label><input type="text" name="username" value={editableProfileData.username} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"/></div>
                         <div className="md:col-span-2"><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">About Me</label><textarea name="about" value={editableProfileData.about} onChange={handleInputChange} rows="4" className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="Tell us something about yourself..."/></div>
-                        <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><BookOpen size={14} className="mr-2"/>Education</label><input type="text" name="education" value={editableProfileData.education} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"/></div>
-                        <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><Globe size={14} className="mr-2"/>Country</label><select name="country" value={editableProfileData.country} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"><option value="">Select</option>{countriesData.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}</select></div>
+                        <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><BookOpen size={14} className="mr-2"/>Education</label><input type="text" name="education" value={editableProfileData.education} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., B.Tech"/></div>
+                        <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><Globe size={14} className="mr-2"/>Country</label><select name="country" value={editableProfileData.country} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"><option value="">Select Country</option>{countriesData.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}</select></div>
                     </div>
                     <ThemedButton onClick={handleUpdateProfile} className="w-full mt-8" icon={Save}>Save Changes</ThemedButton>
                 </Card>
                 <Card title="Account Actions" className="mt-6 border-t-4 border-yellow-500">
                      <div className="space-y-4">
-                        <button onClick={handleDeactivate} className={`w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition-colors ${editableProfileData.status === 'active' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}><EyeOff size={18}/> {editableProfileData.status === 'active' ? 'Deactivate' : 'Re-activate'}</button>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Manage your account or log out from here.</p>
+                        <button onClick={handleDeactivate} className={`w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition-colors ${editableProfileData.status === 'active' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}><EyeOff size={18}/> {editableProfileData.status === 'active' ? 'Deactivate Account' : 'Re-activate Account'}</button>
                         <button onClick={handleLogout} className="w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors"><LogOut size={18}/> Logout</button>
                         <button onClick={() => setShowDeleteModal(true)} className="w-full flex justify-center items-center gap-2 text-red-600 font-semibold py-2 px-4 rounded-lg bg-transparent border border-red-600 hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={18}/> Delete Account Permanently</button>
                     </div>
@@ -192,7 +200,7 @@ const ProfilePage = () => {
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
                             <h3 className="text-xl font-semibold text-red-500 mb-4">Delete Account</h3>
                             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">To confirm, please enter your password.</p>
-                            <input type="password" value={passwordForDelete} onChange={(e) => setPasswordForDelete(e.target.value)} placeholder="Enter password" className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" />
+                            <input type="password" value={passwordForDelete} onChange={(e) => setPasswordForDelete(e.target.value)} placeholder="Enter password" className="w-full p-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" />
                             {deleteError && <p className="text-red-500 text-xs mt-2">{deleteError}</p>}
                             <div className="flex justify-end space-x-3 mt-6">
                                 <button onClick={() => setShowDeleteModal(false)} className="px-5 py-2 rounded-lg text-gray-700 border dark:text-gray-300">Cancel</button>
@@ -213,9 +221,9 @@ const ProfilePage = () => {
                 <p className="text-sm text-gray-500">{profileData.email}</p>
                 <div className="mt-4 w-full max-w-xs"><FriendshipButton /></div>
                 <div className="text-left w-full mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                    <div><h4 className="font-semibold text-gray-500 dark:text-gray-400">About Me</h4><p>{profileData.about || '...'}</p></div>
-                    <div><h4 className="font-semibold text-gray-500 dark:text-gray-400">Education</h4><p>{profileData.education || '...'}</p></div>
-                    <div><h4 className="font-semibold text-gray-500 dark:text-gray-400">Country</h4><p className="flex items-center gap-2">{countriesData.find(c => c.name === profileData.country)?.flag} {profileData.country || '...'}</p></div>
+                    <div><h4 className="font-semibold text-gray-500 dark:text-gray-400">About Me</h4><p className="text-gray-700 dark:text-gray-200">{profileData.about || 'Not specified.'}</p></div>
+                    <div><h4 className="font-semibold text-gray-500 dark:text-gray-400">Education</h4><p className="text-gray-700 dark:text-gray-200">{profileData.education || 'Not specified.'}</p></div>
+                    <div><h4 className="font-semibold text-gray-500 dark:text-gray-400">Country</h4><p className="flex items-center gap-2 text-gray-700 dark:text-gray-200">{countriesData.find(c => c.name === profileData.country)?.flag} {profileData.country || 'Not specified.'}</p></div>
                 </div>
             </div>
         </Card>
