@@ -1,144 +1,252 @@
+// src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/FirebaseContext'; // Assuming useAuth provides both auth and db
+import { EyeOff, Eye } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom'; // Using Link and useNavigate
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'; // <<< ADDED IMPORTS for Firestore
-import { Mail, Lock } from 'lucide-react';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
-const LoginPage = () => {
-    // Ensure that useAuth hook provides both 'auth' and 'db'
-    // Based on your AuthContext.jsx, this is already correct:
-    // const value = useMemo(() => ({ ..., auth, db }), [...]);
-    const { auth, db } = useAuth(); // <<< Ensure 'db' is destructured here
-    const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+// Assuming your FirebaseContext provides auth and db
+import { useAuth } from '../contexts/FirebaseContext';
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        if (!auth) {
-            setError("Firebase authentication not initialized.");
-            return;
+// Shared CSS for background animations - move this to a global CSS file or App.jsx for reusability
+const backgroundAnimationsCSS = `
+  @keyframes float {
+    0% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
+    33% { transform: translateY(-20px) translateX(10px) rotate(15deg); opacity: 0.9; }
+    66% { transform: translateY(20px) translateX(-10px) rotate(-15deg); opacity: 0.7; }
+    100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(0.9); opacity: 0.5; }
+  }
+
+  @keyframes glow {
+    0% { filter: blur(20px); opacity: 0.3; }
+    50% { filter: blur(30px); opacity: 0.5; }
+    100% { filter: blur(20px); opacity: 0.3; }
+  }
+`;
+
+function LoginPage() {
+  const { auth, db } = useAuth(); // Get auth and db from context
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState(''); // Use email for both username input and email
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [message, setMessage] = useState(''); // For displaying error/success messages
+  const [loading, setLoading] = useState(false); // To disable buttons during API calls
+
+  const handleSignIn = async () => {
+    setMessage('');
+    setLoading(true);
+    try {
+      if (!auth) throw new Error("Firebase Auth not initialized.");
+
+      await signInWithEmailAndPassword(auth, email, password);
+      setMessage('Login successful!');
+      navigate('/dashboard'); // Redirect to dashboard on success
+
+    } catch (error) {
+      console.error("Email/Password Sign-in Error:", error);
+      let errorMessage = "Login failed. Please check your email and password.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+            errorMessage = "Invalid email or password.";
+            break;
+          case 'auth/invalid-email':
+            errorMessage = "Please enter a valid email address.";
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = "Too many login attempts. Please try again later.";
+            break;
+          default:
+            errorMessage = `Login failed: ${error.message}`;
         }
-        setLoading(true);
-        setError('');
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            navigate('/dashboard');
-        } catch (err) {
-            setError("Failed to log in. Please check your email and password.");
-            console.error("Email/Password Login Error:", err); // More specific console log
+      }
+      setMessage(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setMessage('');
+    setLoading(true);
+    try {
+      if (!auth || !db) throw new Error("Firebase services not initialized.");
+
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // --- Ensure user profile exists in Firestore for Google Sign-in ---
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        // If new Google user, create their profile in Firestore
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          email: user.email,
+          username: user.displayName || user.email.split('@')[0],
+          photoURL: user.photoURL || null,
+          role: 'user', // Default role
+          createdAt: serverTimestamp(),
+          about: `Hi, I'm ${user.displayName || user.email}!`,
+          education: '',
+          country: '',
+          status: 'online'
+        });
+        console.log("New Google user profile created in Firestore from LoginPage.");
+      } else {
+        console.log("Existing Google user logged in from LoginPage.");
+        // Optionally update last login time for existing users
+        // await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
+      }
+      // --- End of Firestore save for Google Sign-in ---
+
+      setMessage('Google login successful!');
+      navigate('/dashboard');
+
+    } catch (error) {
+      console.error("Google Sign-in Error:", error);
+      let errorMessage = "Google login failed. Please try again.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/popup-closed-by-user':
+            errorMessage = "Google login popup was closed.";
+            break;
+          case 'auth/cancelled-popup-request':
+            errorMessage = "Google login already in progress.";
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = "Network error. Check your internet connection.";
+            break;
+          case 'auth/account-exists-with-different-credential':
+            errorMessage = "An account with this email already exists using a different sign-in method.";
+            break;
+          case 'permission-denied': // This is important for security rule issues
+               errorMessage = "Database permission denied. Check Firebase Security Rules.";
+               break;
+          default:
+            errorMessage = `Google login failed: ${error.message}`;
         }
-        setLoading(false);
-    };
+      }
+      setMessage(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleGoogleLogin = async () => {
-        if (!auth || !db) { // <<< Ensure db is available
-            setError("Firebase services not fully initialized.");
-            return;
-        }
-        setLoading(true);
-        setError('');
-        const provider = new GoogleAuthProvider();
-        try {
-            const result = await signInWithPopup(auth, provider); // Authenticates with Firebase
-            const user = result.user; // Get the user object from the successful authentication
 
-            // --- START: FIX FOR DATABASE SAVE ---
-            const userDocRef = doc(db, 'users', user.uid); // Reference to the user's document in Firestore
-            const userDocSnap = await getDoc(userDocRef); // Check if the document already exists
+  return (
+    <div className="min-h-screen bg-blue-100 text-gray-800 flex flex-col items-center justify-between p-4 font-inter relative overflow-hidden">
+      <style>{backgroundAnimationsCSS}</style>
 
-            if (!userDocSnap.exists()) {
-                // If the user's profile does NOT exist in the database, create it
-                await setDoc(userDocRef, {
-                    uid: user.uid, // Explicitly save UID
-                    email: user.email,
-                    username: user.displayName || user.email.split('@')[0], // Use displayName, fallback to email prefix
-                    photoURL: user.photoURL || null, // Save profile picture URL
-                    role: 'user', // Default role for new sign-ups
-                    createdAt: serverTimestamp(), // Timestamp for creation
-                    // You can add other default fields here for a new user:
-                    // about: '',
-                    // education: '',
-                    // country: '',
-                    // status: 'online'
-                });
-                console.log("New user profile created in Firestore after Google Sign-in from LoginPage.");
-            } else {
-                // If the user's profile already exists, you might want to update a last login timestamp or other fields
-                // await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
-                console.log("Existing user logged in via Google from LoginPage.");
-            }
-            // --- END: FIX FOR DATABASE SAVE ---
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute w-24 h-24 bg-blue-500 rounded-full blur-xl opacity-80 animate-[float_10s_ease-in-out_infinite] top-1/4 left-1/4" style={{ animationDelay: '0s' }}></div>
+        <div className="absolute w-32 h-32 bg-blue-400 rounded-full blur-xl opacity-70 animate-[float_12s_ease-in-out_infinite] top-1/2 right-1/4" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute w-28 h-28 bg-blue-600 rounded-full blur-xl opacity-60 animate-[float_11s_ease-in-out_infinite] bottom-1/4 left-1/3" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute w-20 h-20 bg-blue-300 rounded-full blur-xl opacity-90 animate-[float_9s_ease-in-out_infinite] top-1/3 right-1/2" style={{ animationDelay: '6s' }}></div>
+        <div className="absolute w-36 h-36 bg-blue-500 rounded-full blur-xl opacity-75 animate-[float_13s_ease-in-out_infinite] bottom-1/2 left-1/4" style={{ animationDelay: '8s' }}></div>
+        <div className="absolute w-64 h-64 bg-blue-300 rounded-full animate-[glow_8s_ease-in-out_infinite] top-[10%] left-[5%]"></div>
+        <div className="absolute w-80 h-80 bg-blue-400 rounded-full animate-[glow_10s_ease-in-out_infinite] bottom-[15%] right-[10%]"></div>
+      </div>
 
-            navigate('/dashboard'); // Navigate to dashboard after authentication AND database save
+      {/* Main Content - Login Card (Glassmorphism) */}
+      <div className="relative flex flex-col items-center justify-center flex-grow w-full z-10">
+        <div className="bg-white bg-opacity-40 backdrop-filter backdrop-blur-lg border border-blue-400 border-opacity-30 rounded-xl p-8 md:p-12 shadow-xl w-full max-w-md z-10 transform transition-all duration-300 hover:scale-105">
+          <h2 className="text-3xl font-bold mb-6 text-center text-blue-900" style={{ fontFamily: 'Montserrat, sans-serif' }}>LOGIN</h2>
+          <p className="text-gray-600 text-center mb-8">Enter your details to sign in to your account</p>
 
-        } catch (err) {
-            // Provide more descriptive error messages to the user and console
-            console.error("Google Login Error:", err);
-            let errorMessage = "Failed to log in with Google. Please try again.";
-            if (err.code) {
-                switch (err.code) {
-                    case 'auth/popup-closed-by-user':
-                        errorMessage = "Google login popup was closed. Please try again.";
-                        break;
-                    case 'auth/cancelled-popup-request':
-                        errorMessage = "Google login already in progress. Please wait.";
-                        break;
-                    case 'auth/network-request-failed':
-                        errorMessage = "Network error. Please check your internet connection.";
-                        break;
-                    case 'auth/account-exists-with-different-credential':
-                        errorMessage = "An account with this email already exists using a different sign-in method.";
-                        break;
-                    case 'permission-denied': // This is important for security rule issues
-                         errorMessage = "Permission denied. Please check Firebase Security Rules.";
-                         break;
-                    default:
-                        errorMessage = `Error: ${err.message}`; // Fallback to Firebase message
-                }
-            }
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-800 p-4">
-            <div className="p-8 bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm">
-                <h2 className="text-3xl font-bold text-center text-blue-500 mb-6">Welcome Back!</h2>
-                <form onSubmit={handleLogin}>
-                    <div className="mb-4 relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"/>
-                        <input className="w-full pl-10 pr-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-                    </div>
-                    <div className="mb-6 relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"/>
-                        <input className="w-full pl-10 pr-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-                    </div>
-                    {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
-                    <button type="submit" disabled={loading} className="w-full bg-blue-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors">
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
-                </form>
-                <div className="relative flex items-center py-5">
-                    <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
-                    <span className="flex-shrink mx-4 text-gray-500 dark:text-gray-400">OR</span>
-                    <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
-                </div>
-                <button onClick={handleGoogleLogin} disabled={loading} className="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-bold py-3 px-4 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600 transition-colors">
-                    <img src="https://www.google.com/favicon.ico" alt="Google icon" className="w-5 h-5 mr-3"/>
-                    Login with Google
-                </button>
-                <p className="text-center mt-6 text-gray-600 dark:text-gray-300 text-sm">
-                    Don't have an account? <Link to="/signup" className="text-blue-500 hover:underline">Sign Up</Link>
-                </p>
+          {message && (
+            <div className={`mb-4 text-center ${message.includes('successful') ? 'text-green-600' : 'text-red-600'}`}>
+              {message}
             </div>
+          )}
+
+          {/* Email Input */}
+          <div className="mb-4">
+            <input
+              type="email" // Changed to email type
+              id="email"
+              className="w-full p-3 bg-white bg-opacity-60 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+              placeholder="Email" // Changed placeholder
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          {/* Password Input */}
+          <div className="mb-6">
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                className="w-full p-3 bg-white bg-opacity-60 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-500 text-gray-800 placeholder-gray-500"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-blue-700"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Login Button */}
+          <button
+            onClick={handleSignIn}
+            disabled={loading}
+            className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Logging In...' : 'Login'}
+          </button>
+
+          <div className="text-center text-sm mt-4">
+            <a href="#" className="text-blue-700 hover:underline">Forgot password? Click Here</a>
+          </div>
+
+          <div className="relative flex items-center py-5">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="flex-shrink mx-4 text-gray-500">OR</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          {/* Google Login Button */}
+          <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-semibold py-3 rounded-lg shadow-lg hover:bg-gray-50 transition-colors transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+              <img src="https://www.google.com/favicon.ico" alt="Google icon" className="w-5 h-5 mr-3"/>
+              Login with Google
+          </button>
+
+
+          <p className="text-center text-sm mt-2 text-gray-600">
+            Don't have an account? <Link to="/signup" className="text-blue-700 hover:underline">Sign Up</Link>
+          </p>
         </div>
-    );
-};
+      </div>
+
+      {/* Footer */}
+      <footer className="w-full max-w-7xl text-center text-sm text-gray-600 py-4 px-6 md:px-8 z-10">
+        Copyright @ raimohan 2025 | <a href="#" className="hover:underline text-blue-700">Privacy Policy</a>
+      </footer>
+    </div>
+  );
+}
 
 export default LoginPage;
