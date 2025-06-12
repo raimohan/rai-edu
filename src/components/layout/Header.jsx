@@ -3,14 +3,15 @@ import { useLocation, Link } from 'react-router-dom';
 import { Bell, Menu } from 'lucide-react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/FirebaseContext';
+import { AppContext } from '../../App';
 
 const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
     const { theme } = useContext(ThemeContext);
     const { currentUser } = useAuth();
     const location = useLocation();
+    const { playClick } = useContext(AppContext);
 
     const isDashboard = location.pathname === '/dashboard' || location.pathname === '/';
-
     const getPageTitle = (pathname) => {
         if (isDashboard) return 'Dashboard';
         const name = pathname.split('/').pop().replace(/-/g, ' ');
@@ -18,20 +19,21 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
     };
 
     const pageTitle = getPageTitle(location.pathname);
-    const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
-    const usernameInitial = currentUser?.displayName?.charAt(0).toUpperCase() || currentUser?.email?.charAt(0).toUpperCase() || 'U';
+    const unreadCount = notifications ? notifications.filter(n => !n.isRead).length : 0;
+    const usernameInitial = currentUser?.displayName?.charAt(0).toUpperCase() || 'U';
+
+    const handleBellClick = () => {
+        playClick();
+        setShowNotificationModal(true);
+    };
 
     const HeaderIcons = () => (
         <div className="flex items-center space-x-4 md:space-x-6">
-            <div className="relative cursor-pointer" onClick={() => setShowNotificationModal(true)}>
-                <Bell className="w-6 h-6 text-gray-500 hover:text-blue-500 transition-colors" />
-                {unreadCount > 0 && (
-                    <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-                        {unreadCount}
-                    </span>
-                )}
-            </div>
-            <Link to="/profile" className="flex items-center space-x-3 cursor-pointer group">
+            <button onClick={handleBellClick} className="relative text-gray-500 hover:text-blue-500 transition-colors">
+                <Bell className="w-6 h-6" />
+                {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{unreadCount}</span>}
+            </button>
+            <Link to={`/profile/${currentUser?.uid}`} className="flex items-center space-x-3 cursor-pointer group">
                 <div className={`w-10 h-10 bg-${theme.light} rounded-full flex items-center justify-center text-${theme.text} font-semibold text-lg group-hover:ring-2 group-hover:ring-blue-500 transition-all`}>
                     {usernameInitial}
                 </div>
@@ -40,30 +42,17 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
         </div>
     );
 
-    if (isDashboard) {
-        return (
-            <header className="bg-white dark:bg-gray-800 p-4 shadow-sm z-10 flex items-center justify-between">
-                <div className="flex items-center">
-                    <button onClick={toggleSidebar} className="md:hidden mr-4 text-gray-600 dark:text-gray-300">
-                        <Menu size={24} />
-                    </button>
-                    <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize">{pageTitle}</h2> 
-                </div>
-                <HeaderIcons />
-            </header>
-        );
-    }
-
-    // बाकी पेजों पर सिर्फ कोने में आइकन्स
     return (
-        <div className="fixed top-4 right-4 z-20">
-             <div className="flex items-center p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg">
-                <button onClick={toggleSidebar} className="md:hidden mr-2 text-gray-600 dark:text-gray-300">
-                    <Menu size={24} />
-                </button>
+        <header className="bg-white dark:bg-gray-800 p-4 shadow-sm z-10 flex items-center justify-between">
+            <div className="flex items-center">
+                <button onClick={toggleSidebar} className="md:hidden mr-4 text-gray-600 dark:text-gray-300"><Menu size={24} /></button>
+                {!isDashboard && <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize">{pageTitle}</h2>}
+            </div>
+            <div className={`${isDashboard ? 'w-full flex justify-between items-center' : ''}`}>
+                {isDashboard && <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize">Dashboard</h2>}
                 <HeaderIcons />
-             </div>
-        </div>
+            </div>
+        </header>
     );
 };
 
