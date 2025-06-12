@@ -1,7 +1,7 @@
 // src/pages/SignupPage.jsx
 import React, { useState, useEffect } from 'react';
 import { EyeOff, Eye } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom'; // Using Link and useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -31,7 +31,7 @@ const backgroundAnimationsCSS = `
 `;
 
 function SignupPage() {
-  const { auth, db } = useAuth(); // Get auth and db from context
+  const { auth, db } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
@@ -42,7 +42,7 @@ function SignupPage() {
   const [generatedCaptcha, setGeneratedCaptcha] = useState('');
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false); // To disable buttons during API calls
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     generateCaptcha();
@@ -53,10 +53,10 @@ function SignupPage() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+      result += chars.charAt(Math.floor(Math.random() * chars.random() * chars.length));
     }
     setGeneratedCaptcha(result);
-    setCaptcha(''); // Clear input captcha
+    setCaptcha('');
   };
 
   const handleSignup = async () => {
@@ -91,25 +91,23 @@ function SignupPage() {
     try {
       if (!auth || !db) throw new Error("Firebase services not initialized.");
 
-      // --- START: FIX FOR FIREBASE AUTH AND DATABASE SAVE ---
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      await updateProfile(user, { displayName: username }); // Set display name in Firebase Auth
+      await updateProfile(user, { displayName: username });
 
-      await setDoc(doc(db, 'users', user.uid), { // Save user profile to Firestore
-        uid: user.uid, // Explicitly save UID
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
         username: username,
         email: email,
-        role: 'user', // Default role
+        role: 'user',
         createdAt: serverTimestamp(),
         about: `Hi, I'm ${username}!`,
         education: '',
         country: '',
         status: 'online',
-        photoURL: user.photoURL || null, // Capture photoURL if available from Google (though this is email/pass signup)
+        photoURL: user.photoURL || null,
       });
-      // --- END: FIX FOR FIREBASE AUTH AND DATABASE SAVE ---
 
       setMessage('Sign up successful! Redirecting...');
       setUsername('');
@@ -117,8 +115,8 @@ function SignupPage() {
       setPassword('');
       setConfirmPassword('');
       setCaptcha('');
-      generateCaptcha(); // Regenerate captcha after successful signup
-      navigate('/dashboard'); // Redirect to dashboard on success
+      generateCaptcha();
+      navigate('/dashboard');
 
     } catch (error) {
       console.error("Sign-up Error:", error);
