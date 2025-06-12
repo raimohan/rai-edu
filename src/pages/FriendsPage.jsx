@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/FirebaseContext';
-import { collection, query, where, onSnapshot, doc, getDoc, writeBatch, deleteDoc, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, setDoc, writeBatch, deleteDoc, arrayRemove, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import Card from '../components/common/Card';
-import ConfirmationModal from '../components/common/ConfirmationModal'; // <-- नया मोडल इम्पोर्ट करें
-import { Users, UserPlus, UserCheck, UserX } from 'lucide-react';
+import ConfirmationModal from '../components/common/ConfirmationModal';
+import { Users, UserPlus, UserCheck, UserX, MessageSquare } from 'lucide-react';
 
 const UserAvatar = ({ username }) => {
     const initial = username?.charAt(0).toUpperCase() || '?';
@@ -17,16 +17,14 @@ const UserAvatar = ({ username }) => {
 
 const FriendsPage = () => {
     const { db, currentUser } = useAuth();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('friends');
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // --- मोडल के लिए नए स्टेट्स ---
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
 
-    // दोस्तों की लिस्ट लाना
     useEffect(() => {
         if (!currentUser || !db) return;
         const userDocRef = doc(db, 'users', currentUser.uid);
@@ -44,12 +42,10 @@ const FriendsPage = () => {
         return () => unsubscribe();
     }, [currentUser, db]);
 
-    // फ्रेंड रिक्वेस्ट्स लाना
     useEffect(() => {
         if (!currentUser || !db) return;
         const requestsRef = collection(db, 'friend_requests');
         const q = query(requestsRef, where('to', '==', currentUser.uid), where('status', '==', 'pending'));
-        
         const unsubscribe = onSnapshot(q, async (snapshot) => {
             const requestsDataPromises = snapshot.docs.map(async (requestDoc) => {
                 const requestData = requestDoc.data();
@@ -67,21 +63,35 @@ const FriendsPage = () => {
         return () => unsubscribe();
     }, [currentUser, db]);
     
-    // --- कन्फर्मेशन के बाद चलने वाला फाइनल फंक्शन ---
+    const handleStartChat = async (friendId) => {
+        if (!currentUser || !db) return;
+        const chatId = [currentUser.uid, friendId].sort().join('_');
+        const chatRef = doc(db, 'chats', chatId);
+        try {
+            const chatSnap = await getDoc(chatRef);
+            if (!chatSnap.exists()) {
+                await setDoc(chatRef, {
+                    participants: [currentUser.uid, friendId],
+                    createdAt: serverTimestamp(),
+                    lastMessage: null,
+                });
+            }
+            navigate(`/chat/${chatId}`);
+        } catch (error) {
+            console.error("Error creating or navigating to chat:", error);
+        }
+    };
+
     const handleConfirmAction = async () => {
         if (!confirmAction) return;
         const { type, payload } = confirmAction;
 
         if (type === 'unfriend') {
             const batch = writeBatch(db);
-            // अपनी फ्रेंड लिस्ट से हटाएं
             batch.update(doc(db, 'users', currentUser.uid), { friends: arrayRemove(payload.friendId) });
-            // दोस्त की फ्रेंड लिस्ट से खुद को हटाएं
             batch.update(doc(db, 'users', payload.friendId), { friends: arrayRemove(currentUser.uid) });
             await batch.commit();
         }
-        
-        // मोडल बंद करें और स्टेट रीसेट करें
         setShowConfirmModal(false);
         setConfirmAction(null);
     };
@@ -90,8 +100,18 @@ const FriendsPage = () => {
         setConfirmAction({ type: 'unfriend', payload: { friendId: friend.id, friendName: friend.username } });
         setShowConfirmModal(true);
     };
-    
-    // ... (बाकी फंक्शन्स जैसे handleAcceptRequest, handleDeclineRequest पहले जैसे ही रहेंगे) ...
+
+    const handleAcceptRequest = async (requestId, senderId) => {
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'users', currentUser.uid), { friends: arrayUnion(senderId) });
+        batch.update(doc(db, 'users', senderId), { friends: arrayUnion(currentUser.uid) });
+        batch.delete(doc(db, 'friend_requests', requestId));
+        await batch.commit();
+    };
+
+    const handleDeclineRequest = async (requestId) => {
+        await deleteDoc(doc(db, 'friend_requests', requestId));
+    };
 
     if (loading && friends.length === 0 && requests.length === 0) {
         return <p>Loading friends...</p>;
@@ -109,24 +129,27 @@ const FriendsPage = () => {
                         {requests.length > 0 && <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{requests.length}</span>}
                     </button>
                 </div>
-
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {activeTab === 'friends' && (
                         <ul className="space-y-3">
                             {friends.length > 0 ? friends.map(friend => (
                                 <li key={friend.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <Link to={`/profile/${friend.id}`} className="flex items-center gap-4">
+                                    <Link to={`/profile/${friend.id}`} className="flex items-center gap-4 flex-1">
                                         <UserAvatar username={friend.username} />
                                         <span className="font-medium text-gray-800 dark:text-gray-200">{friend.username}</span>
                                     </Link>
-                                    <button onClick={() => handleUnfriendClick(friend)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-full">
-                                        <UserX size={20}/>
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => handleStartChat(friend.id)} className="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-full" title="Start Chat">
+                                            <MessageSquare size={20}/>
+                                        </button>
+                                        <button onClick={() => handleUnfriendClick(friend)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-full" title="Unfriend">
+                                            <UserX size={20}/>
+                                        </button>
+                                    </div>
                                 </li>
                             )) : <p className="text-center text-gray-500">You have no friends yet.</p>}
                         </ul>
                     )}
-
                     {activeTab === 'requests' && (
                          <ul className="space-y-3">
                             {requests.length > 0 ? requests.map(req => (
@@ -145,7 +168,6 @@ const FriendsPage = () => {
                     )}
                 </div>
             </Card>
-            
             <ConfirmationModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
