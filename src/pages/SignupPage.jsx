@@ -5,30 +5,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-// Assuming your FirebaseContext provides auth and db
-import { useAuth } from '../contexts/FirebaseContext';
+import { useAuth } from '../contexts/FirebaseContext'; // Correctly using useAuth from your context
 
-// Shared CSS for background animations - move this to a global CSS file or App.jsx for reusability
-const backgroundAnimationsCSS = `
-  @keyframes float {
-    0% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
-    33% { transform: translateY(-20px) translateX(10px) rotate(15deg); opacity: 0.9; }
-    66% { transform: translateY(20px) translateX(-10px) rotate(-15deg); opacity: 0.7; }
-    100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(0.9); opacity: 0.5; }
-    50% { transform: scale(1.1); opacity: 0.7; }
-    100% { transform: scale(0.9); opacity: 0.5; }
-  }
-
-  @keyframes glow {
-    0% { filter: blur(20px); opacity: 0.3; }
-    50% { filter: blur(30px); opacity: 0.5; }
-    100% { filter: blur(20px); opacity: 0.3; }
-  }
-`;
+// backgroundAnimationsCSS removed from here and moved to src/index.css
 
 function SignupPage() {
   const { auth, db } = useAuth();
@@ -53,7 +32,7 @@ function SignupPage() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.random() * chars.length));
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setGeneratedCaptcha(result);
     setCaptcha('');
@@ -89,7 +68,7 @@ function SignupPage() {
     setLoading(true);
     setMessage('Signing up...');
     try {
-      if (!auth || !db) throw new Error("Firebase services not initialized.");
+      if (!auth || !db) throw new Error("Firebase services not initialized. Please refresh the page.");
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -147,7 +126,7 @@ function SignupPage() {
 
   return (
     <div className="min-h-screen bg-blue-100 text-gray-800 flex flex-col items-center justify-between p-4 font-inter relative overflow-hidden">
-      <style>{backgroundAnimationsCSS}</style>
+      {/* <style>{backgroundAnimationsCSS}</style> Removed from here */}
 
       {/* Animated Background Elements */}
       <div className="absolute inset-0 z-0">
