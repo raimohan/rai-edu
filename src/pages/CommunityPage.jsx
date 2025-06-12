@@ -62,7 +62,7 @@ const CommunityPage = () => {
         setPageMessage(''); // Clear previous error messages
         if ((!newMessage.trim() && !file) || !currentUser || !db) {
             console.log("Cannot send empty message or user/db not ready.");
-            setPageMessage("Message cannot be empty."); // Provide feedback
+            setPageMessage("Message cannot be empty.");
             return;
         }
 
@@ -99,28 +99,25 @@ const CommunityPage = () => {
                         (error) => {
                             console.error("File upload failed:", error);
                             setPageMessage(`Error uploading file: ${error.message}`);
-                            setIsUploading(false); // Important: reset this on error
+                            setIsUploading(false);
                             reject(error);
                         },
                         async () => {
                             messageToSend.fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
                             messageToSend.fileName = file.name;
-                            setIsUploading(false); // Important: reset this on success
+                            setIsUploading(false);
                             resolve();
                         }
                     );
                 });
             }
 
-            // Now, add the message (with or without file) to Firestore
             await addDoc(collection(db, 'community_messages'), messageToSend);
             console.log("Message sent successfully!");
-            // setPageMessage("Message sent!"); // Optional success message
 
         } catch (error) {
             console.error("Error sending message to Firestore:", error);
             setPageMessage(`Failed to send message: ${error.message}`);
-            // If file upload failed, isUploading would already be false from above
         } finally {
             // No need to set loading here, as it primarily manages initial fetch,
             // and input disablement is via `isUploading`
@@ -154,9 +151,9 @@ const CommunityPage = () => {
     };
 
     const confirmDeletion = async () => {
-        setShowConfirmModal(false); // Close modal immediately
-        setPageMessage(''); // Clear previous messages
-        
+        setShowConfirmModal(false);
+        setPageMessage('');
+
         if (!itemToDelete || !db) {
             setPageMessage("Deletion failed: Item not specified or DB not ready.");
             return;
@@ -166,28 +163,27 @@ const CommunityPage = () => {
             if (itemToDelete.type === 'message') {
                 await deleteDoc(doc(db, "community_messages", itemToDelete.id));
                 console.log("Message deleted successfully!");
-                // setPageMessage("Message deleted!");
             } else if (itemToDelete.type === 'full_chat') {
-                setLoading(true); // Start loading while clearing
+                setLoading(true);
                 const snapshot = await getDocs(collection(db, 'community_messages'));
                 const batch = writeBatch(db);
                 snapshot.docs.forEach((d) => batch.delete(d.ref));
                 await batch.commit();
                 console.log("All messages cleared successfully!");
-                // setPageMessage("Chat cleared!");
-                setLoading(false); // Explicitly stop loading after clearing
+                setLoading(false);
             }
         } catch (error) {
             console.error("Error during deletion:", error);
             setPageMessage(`Deletion failed: ${error.message}`);
-            setLoading(false); // Stop loading on error
+            setLoading(false);
         } finally {
-            setItemToDelete(null); // Clear item to delete regardless of success/failure
+            setItemToDelete(null);
         }
     };
 
     return (
-        <Card title="Community Hub" className="h-full flex flex-col">
+        // Added w-full max-w-full to ensure the card takes full width on smaller screens
+        <Card title="Community Hub" className="h-full flex flex-col w-full max-w-full">
             <div className="flex items-center justify-between mb-4">
                 <p className="text-gray-600 dark:text-gray-400">Share your thoughts and connect with others!</p>
                 {isAdmin && (
@@ -196,7 +192,7 @@ const CommunityPage = () => {
                     </ThemedButton>
                 )}
             </div>
-            {pageMessage && ( // Display page-level messages/errors
+            {pageMessage && (
                 <div className={`mb-4 text-center p-2 rounded-md ${pageMessage.includes('Error') || pageMessage.includes('failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                     {pageMessage}
                 </div>
@@ -221,9 +217,9 @@ const CommunityPage = () => {
                     messages.map(msg => {
                         const isCurrentUser = msg.userId === currentUser?.uid;
                         return (
-                            <div key={msg.id} className={`flex my-2 items-start gap-3 group ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                            <div key={msg.id} className={`flex my-2 items-end gap-3 group ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                 <Link to={`/profile/${msg.userId}`}><UserAvatar username={msg.username} /></Link>
-                                <div className={`p-3 rounded-lg max-w-[70%] break-words ${isCurrentUser ? `bg-${theme.primary} text-white` : 'bg-white dark:bg-gray-700'}`}>
+                                <div className={`py-2 px-3 rounded-2xl max-w-[70%] text-sm relative ${isCurrentUser ? `bg-${theme.primary} text-white` : 'bg-gray-200 dark:bg-gray-700'}`}>
                                     {!isCurrentUser && (
                                         <Link to={`/profile/${msg.userId}`} className={`font-bold text-sm text-${theme.primary} mb-1 block`}>
                                             {msg.username}
