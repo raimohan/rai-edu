@@ -25,7 +25,8 @@ import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import UserManagerPage from './pages/UserManagerPage';
-import FriendsPage from './pages/FriendsPage'; // <-- यहाँ नया इम्पोर्ट जोड़ा गया है
+import FriendsPage from './pages/FriendsPage';
+import ChatPage from './pages/ChatPage'; // <-- यहाँ नया पेज इम्पोर्ट करें
 
 export const AppContext = createContext();
 
@@ -41,7 +42,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const MainAppLayout = () => {
-    const { currentUser } = useAuth(); // currentUser को यहाँ लाएं ताकि Navigate में इस्तेमाल हो सके
+    const { currentUser } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
 
@@ -49,9 +50,7 @@ const MainAppLayout = () => {
         setIsSidebarOpen(false);
     }, [location.pathname]);
 
-    const toggleSidebar = () => {
-        setIsSidebarOpen(!isSidebarOpen);
-    };
+    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
     const [notifications, setNotifications] = useState([]);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -62,7 +61,6 @@ const MainAppLayout = () => {
             <div className="relative flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
                 <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
                 {isSidebarOpen && <div onClick={toggleSidebar} className="fixed inset-0 bg-black/60 z-30 md:hidden" aria-hidden="true"></div>}
-
                 <main className="flex-1 flex flex-col transition-all duration-300">
                     <Header 
                         toggleSidebar={toggleSidebar}
@@ -80,17 +78,15 @@ const MainAppLayout = () => {
                             <Route path="/ai-assistant" element={<GeminiAssistantPage />} />
                             <Route path="/community" element={<CommunityPage />} />
                             <Route path="/profile/:userId" element={<ProfilePage />} />
-                            {/* सुनिश्चित करें कि currentUser मौजूद है */}
-                            <Route path="/profile" element={currentUser ? <Navigate to={`/profile/${currentUser.uid}`} /> : <Navigate to="/login" />} />
+                            <Route path="/profile" element={currentUser ? <Navigate to={`/profile/${currentUser.uid}`} /> : null} />
                             <Route path="/friends" element={<FriendsPage />} />
                             <Route path="/settings" element={<SettingsPage />} />
                             <Route path="/user-manager" element={<UserManagerPage />} />
-                            <Route path="/chat/:chatId" element={<ChatPage />} />
+                            <Route path="/chat/:chatId" element={<ChatPage />} /> {/* <-- यहाँ नया रूट जोड़ें */}
                             <Route path="*" element={<Navigate to="/dashboard" />} />
                         </Routes>
                     </section>
                 </main>
-                
                 {showNotificationModal && (
                     <NotificationModal 
                         notifications={notifications} 
