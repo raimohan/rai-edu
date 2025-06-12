@@ -25,6 +25,7 @@ const FriendsPage = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
 
+    // दोस्तों की लिस्ट लाना
     useEffect(() => {
         if (!currentUser || !db) return;
         const userDocRef = doc(db, 'users', currentUser.uid);
@@ -42,10 +43,12 @@ const FriendsPage = () => {
         return () => unsubscribe();
     }, [currentUser, db]);
 
+    // फ्रेंड रिक्वेस्ट्स लाना
     useEffect(() => {
         if (!currentUser || !db) return;
         const requestsRef = collection(db, 'friend_requests');
         const q = query(requestsRef, where('to', '==', currentUser.uid), where('status', '==', 'pending'));
+        
         const unsubscribe = onSnapshot(q, async (snapshot) => {
             const requestsDataPromises = snapshot.docs.map(async (requestDoc) => {
                 const requestData = requestDoc.data();
@@ -63,6 +66,7 @@ const FriendsPage = () => {
         return () => unsubscribe();
     }, [currentUser, db]);
     
+    // चैट शुरू करना
     const handleStartChat = async (friendId) => {
         if (!currentUser || !db) return;
         const chatId = [currentUser.uid, friendId].sort().join('_');
@@ -81,11 +85,11 @@ const FriendsPage = () => {
             console.error("Error creating or navigating to chat:", error);
         }
     };
-
+    
+    // अनफ्रेंड कन्फर्मेशन
     const handleConfirmAction = async () => {
         if (!confirmAction) return;
         const { type, payload } = confirmAction;
-
         if (type === 'unfriend') {
             const batch = writeBatch(db);
             batch.update(doc(db, 'users', currentUser.uid), { friends: arrayRemove(payload.friendId) });
@@ -101,6 +105,7 @@ const FriendsPage = () => {
         setShowConfirmModal(true);
     };
 
+    // रिक्वेस्ट स्वीकार करना
     const handleAcceptRequest = async (requestId, senderId) => {
         const batch = writeBatch(db);
         batch.update(doc(db, 'users', currentUser.uid), { friends: arrayUnion(senderId) });
@@ -109,6 +114,7 @@ const FriendsPage = () => {
         await batch.commit();
     };
 
+    // रिक्वेस्ट अस्वीकार करना
     const handleDeclineRequest = async (requestId) => {
         await deleteDoc(doc(db, 'friend_requests', requestId));
     };
@@ -147,7 +153,7 @@ const FriendsPage = () => {
                                         </button>
                                     </div>
                                 </li>
-                            )) : <p className="text-center text-gray-500">You have no friends yet.</p>}
+                            )) : <p className="text-center text-gray-500 p-8">You have no friends yet.</p>}
                         </ul>
                     )}
                     {activeTab === 'requests' && (
@@ -163,7 +169,7 @@ const FriendsPage = () => {
                                         <button onClick={() => handleDeclineRequest(req.requestId)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-full"><UserX size={20}/></button>
                                     </div>
                                 </li>
-                            )) : <p className="text-center text-gray-500">No pending friend requests.</p>}
+                            )) : <p className="text-center text-gray-500 p-8">No pending friend requests.</p>}
                         </ul>
                     )}
                 </div>
@@ -172,7 +178,7 @@ const FriendsPage = () => {
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmAction}
-                title="Confirm Action"
+                title="Unfriend User"
                 message={`Are you sure you want to unfriend ${confirmAction?.payload?.friendName}?`}
             />
         </>
