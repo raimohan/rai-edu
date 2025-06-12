@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { signOut, EmailAuthProvider, reauthenticateWithCredential, deleteUser, updateProfile as updateAuthProfile } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, setDoc, getDoc, query, where, getDocs, writeBatch, arrayUnion, arrayRemove, collection } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, setDoc, getDoc, query, where, getDocs, writeBatch, arrayUnion, arrayRemove, collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/FirebaseContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
@@ -83,31 +83,51 @@ const ProfilePage = () => {
     }, [userId, currentUser, db]);
 
     const handleSendFriendRequest = async () => {
-        const newRequestRef = await addDoc(collection(db, 'friend_requests'), { from: currentUser.uid, to: userId, status: 'pending', createdAt: serverTimestamp() });
-        setFriendshipStatus('request_sent');
-        setFriendRequestDocId(newRequestRef.id);
+        if (!currentUser || !db) return;
+        try {
+            const newRequestRef = await addDoc(collection(db, 'friend_requests'), {
+                from: currentUser.uid, to: userId, status: 'pending', createdAt: serverTimestamp()
+            });
+            setFriendshipStatus('request_sent');
+            setFriendRequestDocId(newRequestRef.id);
+        } catch (error) {
+            console.error("Error sending friend request:", error);
+            alert(`Could not send friend request. Error: ${error.message}`);
+        }
     };
 
     const handleAcceptRequest = async () => {
-        const batch = writeBatch(db);
-        batch.update(doc(db, 'users', currentUser.uid), { friends: arrayUnion(userId) });
-        batch.update(doc(db, 'users', userId), { friends: arrayUnion(currentUser.uid) });
-        batch.delete(doc(db, 'friend_requests', friendRequestDocId));
-        await batch.commit();
-        setFriendshipStatus('friends');
+        if (!currentUser || !db || !friendRequestDocId) return;
+        try {
+            const batch = writeBatch(db);
+            batch.update(doc(db, 'users', currentUser.uid), { friends: arrayUnion(userId) });
+            batch.update(doc(db, 'users', userId), { friends: arrayUnion(currentUser.uid) });
+            batch.delete(doc(db, 'friend_requests', friendRequestDocId));
+            await batch.commit();
+            setFriendshipStatus('friends');
+        } catch (error) {
+            console.error("Error accepting request:", error);
+            alert(`Error accepting request: ${error.message}`);
+        }
     };
 
     const handleRemoveFriendOrCancelRequest = async () => {
-        if (friendshipStatus === 'friends') {
-            if (!window.confirm("Are you sure you want to unfriend?")) return;
-            const batch = writeBatch(db);
-            batch.update(doc(db, 'users', currentUser.uid), { friends: arrayRemove(userId) });
-            batch.update(doc(db, 'users', userId), { friends: arrayRemove(currentUser.uid) });
-            await batch.commit();
-        } else if (friendRequestDocId) {
-            await deleteDoc(doc(db, 'friend_requests', friendRequestDocId));
+        if (!currentUser || !db) return;
+        try {
+            if (friendshipStatus === 'friends') {
+                if (!window.confirm("Are you sure you want to unfriend?")) return;
+                const batch = writeBatch(db);
+                batch.update(doc(db, 'users', currentUser.uid), { friends: arrayRemove(userId) });
+                batch.update(doc(db, 'users', userId), { friends: arrayRemove(currentUser.uid) });
+                await batch.commit();
+            } else if (friendRequestDocId) {
+                await deleteDoc(doc(db, 'friend_requests', friendRequestDocId));
+            }
+            setFriendshipStatus('not_friends');
+        } catch (error) {
+            console.error("Error removing friend/request:", error);
+            alert(`Error: ${error.message}`);
         }
-        setFriendshipStatus('not_friends');
     };
 
     const handleInputChange = (e) => setEditableProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -115,32 +135,23 @@ const ProfilePage = () => {
     const handleUpdateProfile = async () => {
         if (!editableProfileData.username.trim()) { setAlertMessage("Username cannot be empty."); setShowAlert(true); return; }
         const currentUsername = currentUser.displayName;
-
         if (!isAdmin && currentUsername !== editableProfileData.username) {
             if (editableProfileData.usernameLastChanged) {
                 const daysSince = differenceInDays(new Date(), editableProfileData.usernameLastChanged.toDate());
-                if (daysSince < 15) {
-                    setAlertMessage(`You can change your username again in ${15 - daysSince} days.`);
-                    setShowAlert(true);
-                    return;
-                }
+                if (daysSince < 15) { setAlertMessage(`You can change your username again in ${15 - daysSince} days.`); setShowAlert(true); return; }
             }
         }
         try {
             const userDocRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userDocRef, {
-                username: editableProfileData.username,
-                about: editableProfileData.about,
-                education: editableProfileData.education,
-                country: editableProfileData.country,
+                username: editableProfileData.username, about: editableProfileData.about,
+                education: editableProfileData.education, country: editableProfileData.country,
                 ...(currentUsername !== editableProfileData.username && { usernameLastChanged: serverTimestamp() })
             });
-
             if (currentUsername !== editableProfileData.username) {
                 await updateAuthProfile(currentUser, { displayName: editableProfileData.username });
             }
-            setAlertMessage("Profile updated successfully!");
-            setShowAlert(true);
+            setAlertMessage("Profile updated successfully!"); setShowAlert(true);
         } catch (e) {
             setAlertMessage(`Error: ${e.message}`);
             setShowAlert(true);
@@ -151,8 +162,7 @@ const ProfilePage = () => {
         if (window.confirm("Are you sure you want to change your account status?")) {
             const newStatus = editableProfileData.status === 'active' ? 'deactivated' : 'active';
             await updateDoc(doc(db, 'users', currentUser.uid), { status: newStatus });
-            setAlertMessage(`Account has been ${newStatus}.`);
-            setShowAlert(true);
+            setAlertMessage(`Account has been ${newStatus}.`); setShowAlert(true);
         }
     };
     
@@ -186,15 +196,11 @@ const ProfilePage = () => {
             const chatSnap = await getDoc(chatRef);
             if (!chatSnap.exists()) {
                 await setDoc(chatRef, {
-                    participants: [currentUser.uid, userId],
-                    createdAt: serverTimestamp(),
-                    lastMessage: null,
+                    participants: [currentUser.uid, userId], createdAt: serverTimestamp(), lastMessage: null,
                 });
             }
             navigate(`/chat/${chatId}`);
-        } catch (error) {
-            console.error("Error starting chat:", error);
-        }
+        } catch (error) { console.error("Error starting chat:", error); }
     };
 
     if (isLoading) return <ProfileSkeleton />;
@@ -203,24 +209,15 @@ const ProfilePage = () => {
     const FriendshipButton = () => {
         if (isOwnProfile) return null;
         switch (friendshipStatus) {
-            case 'friends':
-                return (
-                    <div className="flex gap-4">
-                        <ThemedButton onClick={handleStartChat} icon={MessageSquare} className="w-full bg-blue-500">Chat</ThemedButton>
-                        <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-gray-500">Unfriend</ThemedButton>
-                    </div>
-                );
-            case 'request_sent':
-                return <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-yellow-500">Cancel Request</ThemedButton>;
-            case 'request_received':
-                return (
-                    <div className="flex gap-4">
-                        <ThemedButton onClick={handleAcceptRequest} icon={UserCheck} className="w-full bg-green-500">Accept</ThemedButton>
-                        <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-red-500">Decline</ThemedButton>
-                    </div>
-                );
-            default:
-                return <ThemedButton onClick={handleSendFriendRequest} icon={UserPlus} className="w-full">Add Friend</ThemedButton>;
+            case 'friends': return (
+                <div className="flex gap-4">
+                    <ThemedButton onClick={handleStartChat} icon={MessageSquare} className="w-full bg-blue-500">Chat</ThemedButton>
+                    <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-gray-500">Unfriend</ThemedButton>
+                </div>
+            );
+            case 'request_sent': return <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-yellow-500">Cancel Request</ThemedButton>;
+            case 'request_received': return (<div className="flex gap-4"><ThemedButton onClick={handleAcceptRequest} icon={UserCheck} className="w-full bg-green-500">Accept</ThemedButton><ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-red-500">Decline</ThemedButton></div>);
+            default: return <ThemedButton onClick={handleSendFriendRequest} icon={UserPlus} className="w-full">Add Friend</ThemedButton>;
         }
     };
 
@@ -241,7 +238,7 @@ const ProfilePage = () => {
                         <div className="md:col-span-2"><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><User size={14} className="mr-2"/>Username</label><input type="text" name="username" value={editableProfileData.username} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"/></div>
                         <div className="md:col-span-2"><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">About Me</label><textarea name="about" value={editableProfileData.about} onChange={handleInputChange} rows="4" className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="Tell us something about yourself..."/></div>
                         <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><BookOpen size={14} className="mr-2"/>Education</label><input type="text" name="education" value={editableProfileData.education} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., B.Tech"/></div>
-                        <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><Globe size={14} className="mr-2"/>Country</label><select name="country" value={editableProfileData.country} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"><option value="">Select Country</option>{countriesData.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}</select></div>
+                        <div><label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"><Globe size={14} className="mr-2"/>Country</label><select name="country" value={editableProfileData.country} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"><option value="">Select</option>{countriesData.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}</select></div>
                     </div>
                     <ThemedButton onClick={handleUpdateProfile} className="w-full mt-8" icon={Save}>Save Changes</ThemedButton>
                 </Card>
