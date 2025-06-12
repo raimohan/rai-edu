@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/FirebaseContext';
 import Card from '../components/common/Card';
 import ThemedButton from '../components/common/ThemedButton';
 import CustomAlert from '../components/common/CustomAlert';
-import { LogOut, User, Mail, BookOpen, Globe, Trash2, Save, EyeOff, UserPlus, UserCheck, UserX } from 'lucide-react';
+import { LogOut, User, Mail, BookOpen, Globe, Trash2, Save, EyeOff, UserPlus, UserCheck, UserX, MessageSquare } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 
 const countriesData = [
@@ -30,12 +30,15 @@ const ProfileSkeleton = () => (
 const ProfilePage = () => {
     const { userId } = useParams();
     const { auth, db, currentUser, isAdmin } = useAuth();
+    const navigate = useNavigate();
+
     const [profileData, setProfileData] = useState(null);
     const [editableProfileData, setEditableProfileData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isOwnProfile, setIsOwnProfile] = useState(false);
     const [friendshipStatus, setFriendshipStatus] = useState('loading');
     const [friendRequestDocId, setFriendRequestDocId] = useState(null);
+    
     const [showAlert, setShowAlert] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -43,11 +46,7 @@ const ProfilePage = () => {
     const [deleteError, setDeleteError] = useState('');
 
     useEffect(() => {
-        if (!userId || !db || !currentUser) {
-            setIsLoading(false);
-            return;
-        }
-
+        if (!userId || !db || !currentUser) { setIsLoading(false); return; }
         const ownProfileCheck = currentUser.uid === userId;
         setIsOwnProfile(ownProfileCheck);
 
@@ -88,6 +87,7 @@ const ProfilePage = () => {
         setFriendshipStatus('request_sent');
         setFriendRequestDocId(newRequestRef.id);
     };
+
     const handleAcceptRequest = async () => {
         const batch = writeBatch(db);
         batch.update(doc(db, 'users', currentUser.uid), { friends: arrayUnion(userId) });
@@ -96,6 +96,7 @@ const ProfilePage = () => {
         await batch.commit();
         setFriendshipStatus('friends');
     };
+
     const handleRemoveFriendOrCancelRequest = async () => {
         if (friendshipStatus === 'friends') {
             if (!window.confirm("Are you sure you want to unfriend?")) return;
@@ -108,49 +109,93 @@ const ProfilePage = () => {
         }
         setFriendshipStatus('not_friends');
     };
+
     const handleInputChange = (e) => setEditableProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
     const handleUpdateProfile = async () => {
         if (!editableProfileData.username.trim()) { setAlertMessage("Username cannot be empty."); setShowAlert(true); return; }
         const currentUsername = currentUser.displayName;
+
         if (!isAdmin && currentUsername !== editableProfileData.username) {
             if (editableProfileData.usernameLastChanged) {
                 const daysSince = differenceInDays(new Date(), editableProfileData.usernameLastChanged.toDate());
-                if (daysSince < 15) { setAlertMessage(`You can change your username again in ${15 - daysSince} days.`); setShowAlert(true); return; }
+                if (daysSince < 15) {
+                    setAlertMessage(`You can change your username again in ${15 - daysSince} days.`);
+                    setShowAlert(true);
+                    return;
+                }
             }
         }
         try {
             const userDocRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userDocRef, {
-                username: editableProfileData.username, about: editableProfileData.about,
-                education: editableProfileData.education, country: editableProfileData.country,
+                username: editableProfileData.username,
+                about: editableProfileData.about,
+                education: editableProfileData.education,
+                country: editableProfileData.country,
                 ...(currentUsername !== editableProfileData.username && { usernameLastChanged: serverTimestamp() })
             });
+
             if (currentUsername !== editableProfileData.username) {
                 await updateAuthProfile(currentUser, { displayName: editableProfileData.username });
             }
-            setAlertMessage("Profile updated successfully!"); setShowAlert(true);
-        } catch (e) { setAlertMessage(`Error: ${e.message}`); }
+            setAlertMessage("Profile updated successfully!");
+            setShowAlert(true);
+        } catch (e) {
+            setAlertMessage(`Error: ${e.message}`);
+            setShowAlert(true);
+        }
     };
+    
     const handleDeactivate = async () => {
         if (window.confirm("Are you sure you want to change your account status?")) {
             const newStatus = editableProfileData.status === 'active' ? 'deactivated' : 'active';
             await updateDoc(doc(db, 'users', currentUser.uid), { status: newStatus });
-            setAlertMessage(`Account has been ${newStatus}.`); setShowAlert(true);
+            setAlertMessage(`Account has been ${newStatus}.`);
+            setShowAlert(true);
         }
     };
+    
     const handleDeleteAccount = async () => {
         if (!passwordForDelete) { setDeleteError("Password is required."); return; }
         setDeleteError('');
         try {
             const credential = EmailAuthProvider.credential(currentUser.email, passwordForDelete);
             await reauthenticateWithCredential(currentUser, credential);
-            if (window.confirm("ARE YOU ABSOLUTELY SURE? This is permanent.")) {
+            if (window.confirm("ARE YOU ABSOLUTELY SURE? This action is permanent and will delete all your data.")) {
                 await deleteDoc(doc(db, "users", currentUser.uid));
                 await deleteUser(currentUser);
-            } else { setShowDeleteModal(false); setPasswordForDelete(''); }
-        } catch (e) { setDeleteError("Incorrect password or error deleting account."); }
+            } else {
+                setShowDeleteModal(false);
+                setPasswordForDelete('');
+            }
+        } catch (e) {
+            setDeleteError("Incorrect password or error deleting account.");
+        }
     };
-    const handleLogout = async () => { await signOut(auth); };
+    
+    const handleLogout = async () => {
+        await signOut(auth);
+    };
+
+    const handleStartChat = async () => {
+        if (!currentUser || !db) return;
+        const chatId = [currentUser.uid, userId].sort().join('_');
+        const chatRef = doc(db, 'chats', chatId);
+        try {
+            const chatSnap = await getDoc(chatRef);
+            if (!chatSnap.exists()) {
+                await setDoc(chatRef, {
+                    participants: [currentUser.uid, userId],
+                    createdAt: serverTimestamp(),
+                    lastMessage: null,
+                });
+            }
+            navigate(`/chat/${chatId}`);
+        } catch (error) {
+            console.error("Error starting chat:", error);
+        }
+    };
 
     if (isLoading) return <ProfileSkeleton />;
     if (!profileData) return <Card title="Error"><p className="text-center">User not found.</p></Card>;
@@ -158,21 +203,35 @@ const ProfilePage = () => {
     const FriendshipButton = () => {
         if (isOwnProfile) return null;
         switch (friendshipStatus) {
-            case 'friends': return <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-gray-500">Unfriend</ThemedButton>;
-            case 'request_sent': return <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-yellow-500">Cancel Request</ThemedButton>;
-            case 'request_received': return (<div className="flex gap-4"><ThemedButton onClick={handleAcceptRequest} icon={UserCheck} className="w-full bg-green-500">Accept</ThemedButton><ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-red-500">Decline</ThemedButton></div>);
-            default: return <ThemedButton onClick={handleSendFriendRequest} icon={UserPlus} className="w-full">Add Friend</ThemedButton>;
+            case 'friends':
+                return (
+                    <div className="flex gap-4">
+                        <ThemedButton onClick={handleStartChat} icon={MessageSquare} className="w-full bg-blue-500">Chat</ThemedButton>
+                        <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-gray-500">Unfriend</ThemedButton>
+                    </div>
+                );
+            case 'request_sent':
+                return <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-yellow-500">Cancel Request</ThemedButton>;
+            case 'request_received':
+                return (
+                    <div className="flex gap-4">
+                        <ThemedButton onClick={handleAcceptRequest} icon={UserCheck} className="w-full bg-green-500">Accept</ThemedButton>
+                        <ThemedButton onClick={handleRemoveFriendOrCancelRequest} icon={UserX} className="w-full bg-red-500">Decline</ThemedButton>
+                    </div>
+                );
+            default:
+                return <ThemedButton onClick={handleSendFriendRequest} icon={UserPlus} className="w-full">Add Friend</ThemedButton>;
         }
     };
 
     if (isOwnProfile) {
-        if (!editableProfileData) return <ProfileSkeleton />; // सुरक्षा जांच
+        if (!editableProfileData) return <ProfileSkeleton />;
         return (
             <>
                 <Card>
                     <div className="flex flex-col items-center text-center mb-8">
                         <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-4xl font-bold text-gray-500 dark:text-gray-400 mb-4">
-                            {editableProfileData.username.charAt(0).toUpperCase()}
+                            {editableProfileData.username?.charAt(0).toUpperCase()}
                         </div>
                         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{editableProfileData.username}</h2>
                         <p className="text-sm text-gray-500 dark:text-gray-400">{editableProfileData.email}</p>
@@ -189,7 +248,7 @@ const ProfilePage = () => {
                 <Card title="Account Actions" className="mt-6 border-t-4 border-yellow-500">
                      <div className="space-y-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Manage your account or log out from here.</p>
-                        <button onClick={handleDeactivate} className={`w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition-colors ${editableProfileData.status === 'active' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}><EyeOff size={18}/> {editableProfileData.status === 'active' ? 'Deactivate Account' : 'Re-activate Account'}</button>
+                        <button onClick={handleDeactivate} className={`w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg transition-colors ${editableProfileData.status === 'active' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}><EyeOff size={18}/> {editableProfileData.status === 'active' ? 'Deactivate' : 'Re-activate'}</button>
                         <button onClick={handleLogout} className="w-full flex justify-center items-center gap-2 text-white font-semibold py-2 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors"><LogOut size={18}/> Logout</button>
                         <button onClick={() => setShowDeleteModal(true)} className="w-full flex justify-center items-center gap-2 text-red-600 font-semibold py-2 px-4 rounded-lg bg-transparent border border-red-600 hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={18}/> Delete Account Permanently</button>
                     </div>
@@ -216,7 +275,7 @@ const ProfilePage = () => {
     return (
         <Card>
             <div className="flex flex-col items-center text-center">
-                <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-4xl font-bold">{profileData.username.charAt(0).toUpperCase()}</div>
+                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-4xl font-bold">{profileData.username.charAt(0).toUpperCase()}</div>
                 <h2 className="text-2xl font-bold mt-4">{profileData.username}</h2>
                 <p className="text-sm text-gray-500">{profileData.email}</p>
                 <div className="mt-4 w-full max-w-xs"><FriendshipButton /></div>
