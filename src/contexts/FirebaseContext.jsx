@@ -1,19 +1,20 @@
 // src/contexts/FirebaseContext.jsx
 import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'; // Added setDoc, serverTimestamp
-import { auth, db } from '../services/firebase'; // Ensure these are correctly imported
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
 
 // Assuming you have a LoadingAnimation component
 import LoadingAnimation from '../components/common/LoadingAnimation';
 
-const FirebaseContext = React.createContext(); // Renamed from AuthContext
+const FirebaseContext = React.createContext();
 
 export function useAuth() {
-    return useContext(FirebaseContext); // Using FirebaseContext
+    return useContext(FirebaseContext);
 }
 
-export function FirebaseProvider({ children }) { // Renamed from AuthProvider
+// Renamed back to AuthProvider as per your request
+export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -22,17 +23,14 @@ export function FirebaseProvider({ children }) { // Renamed from AuthProvider
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user) {
-                // Ensure user profile exists in Firestore upon any login (email/google/etc.)
-                // This acts as a safeguard if initial save was missed or user logs in from another method.
                 const userDocRef = doc(db, 'users', user.uid);
                 const userDoc = await getDoc(userDocRef);
 
                 if (!userDoc.exists()) {
-                    // If user logs in but profile is missing in DB (e.g., first Google login on old code)
                     await setDoc(userDocRef, {
                         uid: user.uid,
                         email: user.email,
-                        username: user.displayName || user.email.split('@')[0], // Fallback username
+                        username: user.displayName || user.email.split('@')[0],
                         photoURL: user.photoURL || null,
                         role: 'user',
                         createdAt: serverTimestamp(),
@@ -57,8 +55,8 @@ export function FirebaseProvider({ children }) { // Renamed from AuthProvider
         currentUser,
         isAdmin,
         loading,
-        auth, // Expose Firebase auth instance
-        db    // Expose Firestore db instance
+        auth,
+        db
     }), [currentUser, isAdmin, loading, auth, db]);
 
     return (
