@@ -1,6 +1,8 @@
+// src/pages/CommunityPage.jsx
+
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, writeBatch, getDocs } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Import getStorage
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/FirebaseContext';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -23,48 +25,47 @@ const CommunityPage = () => {
     const { theme } = useContext(ThemeContext);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    const [file, setFile] = useState(null); // State to hold the selected file
+    const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // Initial loading state
     const chatEndRef = useRef(null);
-    const fileInputRef = useRef(null); // Ref for the hidden file input
+    const fileInputRef = useRef(null);
 
-    // --- यहाँ नए स्टेट्स जोड़े गए हैं ---
     const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState(null); // 'item' ताकि यह सिर्फ मैसेज के लिए न हो
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     useEffect(() => {
-        if (!db) return;
+        if (!db) {
+            setLoading(false); // Stop loading if db is not available
+            return;
+        }
         const q = query(collection(db, 'community_messages'), orderBy('timestamp', 'asc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedMessages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'now'
-            }));
+            const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: doc.data().timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'now' }));
             setMessages(fetchedMessages);
-            setLoading(false);
+            setLoading(false); // Set loading to false once messages are fetched
+        }, (error) => {
+            console.error("Error fetching community messages:", error);
+            setLoading(false); // Set loading to false on error
         });
         return unsubscribe;
     }, [db]);
 
     useEffect(() => {
-        // Scroll to the bottom of the chat when new messages arrive
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if ((!newMessage.trim() && !file) || !currentUser || !db) return; // Prevent sending empty messages without file
+        if ((!newMessage.trim() && !file) || !currentUser || !db) return;
 
-        setLoading(true); // Disable input/button during send process
-
+        setLoading(true); // Temporarily set loading to disable input while sending, will be false after message is processed
         let fileUrl = null;
         let fileName = null;
 
         if (file) {
             setIsUploading(true);
-            const storage = getStorage(); // Initialize storage
+            const storage = getStorage();
             const storageRef = ref(storage, `community_files/${currentUser.uid}/${Date.now()}_${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -77,7 +78,7 @@ const CommunityPage = () => {
                     console.error("File upload failed:", error);
                     setIsUploading(false);
                     setUploadProgress(0);
-                    setMessage(`Error uploading file: ${error.message}`); // Assume you have a message state
+                    // setMessage(`Error uploading file: ${error.message}`); // If you have a message state
                     setLoading(false);
                 },
                 async () => {
@@ -86,12 +87,12 @@ const CommunityPage = () => {
                     setIsUploading(false);
                     setUploadProgress(0);
                     await sendMessageToFirestore(fileUrl, fileName);
-                    setLoading(false);
+                    setLoading(false); // Done sending
                 }
             );
         } else {
             await sendMessageToFirestore(null, null);
-            setLoading(false);
+            setLoading(false); // Done sending
         }
     };
 
@@ -99,40 +100,39 @@ const CommunityPage = () => {
         try {
             await addDoc(collection(db, 'community_messages'), {
                 userId: currentUser.uid,
-                username: currentUser.displayName || currentUser.email.split('@')[0], // Use display name or email part
+                username: currentUser.displayName || currentUser.email.split('@')[0],
                 messageText: newMessage.trim(),
                 fileUrl: fileUrl,
                 fileName: fileName,
                 timestamp: serverTimestamp(),
             });
             setNewMessage('');
-            setFile(null); // Clear selected file after sending
+            setFile(null);
             if (fileInputRef.current) {
-                fileInputRef.current.value = ""; // Clear file input element
+                fileInputRef.current.value = "";
             }
         } catch (error) {
             console.error("Error sending message:", error);
-            // setMessage(`Error sending message: ${error.message}`); // Assume you have a message state
+            // setMessage(`Error sending message: ${error.message}`);
         }
     };
 
     const handleFileChange = (e) => {
         if (e.target.files[0]) {
             setFile(e.target.files[0]);
-            setMessage(''); // Clear any previous messages
+            // setMessage('');
         }
     };
 
     const handleRemoveFile = () => {
         setFile(null);
         if (fileInputRef.current) {
-            fileInputRef.current.value = ""; // Clear the file input element
+            fileInputRef.current.value = "";
         }
-        setIsUploading(false); // Reset upload state
-        setUploadProgress(0); // Reset progress
+        setIsUploading(false);
+        setUploadProgress(0);
     };
 
-    // --- डिलीट का नया तरीका ---
     const handleDeleteClick = (id) => {
         setItemToDelete({ type: 'message', id });
         setShowConfirmModal(true);
@@ -149,14 +149,12 @@ const CommunityPage = () => {
         if (itemToDelete.type === 'message') {
             await deleteDoc(doc(db, "community_messages", itemToDelete.id));
         } else if (itemToDelete.type === 'full_chat') {
-            setLoading(true); // Show loading while clearing
+            setLoading(true);
             const snapshot = await getDocs(collection(db, 'community_messages'));
             const batch = writeBatch(db);
             snapshot.docs.forEach((d) => batch.delete(d.ref));
             await batch.commit();
-            // setLoading(false) is handled by onSnapshot's initial load when chat is empty
         }
-
         setShowConfirmModal(false);
         setItemToDelete(null);
     };
@@ -172,8 +170,19 @@ const CommunityPage = () => {
                 )}
             </div>
             <div className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900/50 p-4 rounded-xl shadow-inner overflow-y-auto mb-4 custom-scrollbar">
-                {loading && messages.length === 0 ? ( // Only show loading spinner initially, not if messages are already loaded
-                    <div className="m-auto"><p>Loading messages...</p></div>
+                {loading && messages.length === 0 ? ( // Only show skeleton if initial load AND no messages yet
+                    <div className="flex flex-col gap-4 w-full h-full justify-center items-center p-4">
+                        {/* Skeleton messages for chat history loading */}
+                        <div className="skeleton-bubble received-bubble w-3/4"></div>
+                        <div className="skeleton-bubble received-bubble w-2/3"></div>
+                        <div className="skeleton-bubble sent-bubble w-1/2"></div>
+                        <div className="skeleton-bubble sent-bubble w-3/5"></div>
+                        <div className="skeleton-bubble received-bubble w-4/5"></div>
+                        <div className="skeleton-bubble received-bubble w-1/3"></div>
+                        <div className="skeleton-bubble sent-bubble w-2/3"></div>
+                        <div className="skeleton-bubble sent-bubble w-3/4"></div>
+                        <div className="skeleton-bubble received-bubble w-1/2"></div>
+                    </div>
                 ) : messages.length === 0 ? (
                     <div className="m-auto text-gray-500 dark:text-gray-400">No messages yet. Be the first to say hi!</div>
                 ) : (
@@ -218,7 +227,6 @@ const CommunityPage = () => {
                 <div ref={chatEndRef} />
             </div>
 
-            {/* --- यहाँ इनपुट एरिया फिर से जोड़ा गया है --- */}
             <div className="flex flex-col bg-white dark:bg-gray-800 p-3 rounded-xl shadow-md">
                 {file && (
                     <div className="flex items-center justify-between p-2 mb-2 bg-gray-100 dark:bg-gray-700 rounded-md">
@@ -242,10 +250,10 @@ const CommunityPage = () => {
                         type="file"
                         ref={fileInputRef}
                         onChange={handleFileChange}
-                        className="hidden" // Hide the default file input
+                        className="hidden"
                     />
                     <button
-                        onClick={() => fileInputRef.current.click()} // Trigger hidden input click
+                        onClick={() => fileInputRef.current.click()}
                         className={`p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-${theme.primary} hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex-shrink-0`}
                         disabled={isUploading || loading}
                     >
@@ -257,22 +265,20 @@ const CommunityPage = () => {
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                        rows={1} // Start with 1 row, let CSS handle overflow
+                        rows={1}
                         disabled={isUploading || loading}
                     ></textarea>
                     <ThemedButton
                         onClick={handleSendMessage}
                         icon={Send}
                         className="flex-shrink-0"
-                        disabled={(!newMessage.trim() && !file) || isUploading || loading} // Disable if empty or uploading/loading
+                        disabled={(!newMessage.trim() && !file) || isUploading || loading}
                     >
                         Send
                     </ThemedButton>
                 </div>
             </div>
-            {/* --- इनपुट एरिया का अंत --- */}
 
-            {/* नया कन्फर्मेशन मोडल */}
             <ConfirmationModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
@@ -289,3 +295,4 @@ const CommunityPage = () => {
 };
 
 export default CommunityPage;
+        
