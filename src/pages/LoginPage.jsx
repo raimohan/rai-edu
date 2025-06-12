@@ -1,7 +1,7 @@
 // src/pages/LoginPage.jsx
 import React, { useState } from 'react';
 import { EyeOff, Eye } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom'; // Using Link and useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -34,11 +34,11 @@ function LoginPage() {
   const { auth, db } = useAuth(); // Get auth and db from context
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState(''); // Use email for both username input and email
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState(''); // For displaying error/success messages
-  const [loading, setLoading] = useState(false); // To disable buttons during API calls
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSignIn = async () => {
     setMessage('');
@@ -48,7 +48,7 @@ function LoginPage() {
 
       await signInWithEmailAndPassword(auth, email, password);
       setMessage('Login successful!');
-      navigate('/dashboard'); // Redirect to dashboard on success
+      navigate('/dashboard');
 
     } catch (error) {
       console.error("Email/Password Sign-in Error:", error);
@@ -85,18 +85,16 @@ function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // --- Ensure user profile exists in Firestore for Google Sign-in ---
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
-        // If new Google user, create their profile in Firestore
         await setDoc(userDocRef, {
           uid: user.uid,
           email: user.email,
           username: user.displayName || user.email.split('@')[0],
           photoURL: user.photoURL || null,
-          role: 'user', // Default role
+          role: 'user',
           createdAt: serverTimestamp(),
           about: `Hi, I'm ${user.displayName || user.email}!`,
           education: '',
@@ -106,10 +104,7 @@ function LoginPage() {
         console.log("New Google user profile created in Firestore from LoginPage.");
       } else {
         console.log("Existing Google user logged in from LoginPage.");
-        // Optionally update last login time for existing users
-        // await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() });
       }
-      // --- End of Firestore save for Google Sign-in ---
 
       setMessage('Google login successful!');
       navigate('/dashboard');
@@ -131,7 +126,7 @@ function LoginPage() {
           case 'auth/account-exists-with-different-credential':
             errorMessage = "An account with this email already exists using a different sign-in method.";
             break;
-          case 'permission-denied': // This is important for security rule issues
+          case 'permission-denied':
                errorMessage = "Database permission denied. Check Firebase Security Rules.";
                break;
           default:
@@ -175,10 +170,10 @@ function LoginPage() {
           {/* Email Input */}
           <div className="mb-4">
             <input
-              type="email" // Changed to email type
+              type="email"
               id="email"
               className="w-full p-3 bg-white bg-opacity-60 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
-              placeholder="Email" // Changed placeholder
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
