@@ -18,7 +18,7 @@
   background: #555;
 }
 
-/* --- START: Background Animations CSS --- */
+/* Background Animations CSS */
 @keyframes float {
   0% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.8; }
   33% { transform: translateY(-20px) translateX(10px) rotate(15deg); opacity: 0.9; }
@@ -37,4 +37,53 @@
   50% { filter: blur(30px); opacity: 0.5; }
   100% { filter: blur(20px); opacity: 0.3; }
 }
-/* --- END: Background Animations CSS --- */
+
+/* --- NEW: Chat History Loading Skeleton Styles --- */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton-bubble {
+    background-color: #e2e8f0; /* Tailwind gray-200, skeleton base color */
+    background-image: linear-gradient(to right, #e2e8f0 0%, #f0f2f5 20%, #e2e8f0 40%, #e2e8f0 100%);
+    background-repeat: no-repeat;
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Dark mode for skeleton bubbles */
+.dark .skeleton-bubble {
+    background-color: #4a5568; /* Tailwind gray-700 */
+    background-image: linear-gradient(to right, #4a5568 0%, #2d3748 20%, #4a5568 40%, #4a5568 100%); /* Tailwind gray-900 or similar */
+}
+
+
+.received-bubble {
+    align-self: flex-start;
+    margin-right: auto;
+    max-width: 80%;
+    min-width: 40%;
+}
+
+.sent-bubble {
+    align-self: flex-end;
+    margin-left: auto;
+    max-width: 80%;
+    min-width: 40%;
+    background-color: #bfdbfe; /* Tailwind blue-200, sender's bubble color */
+    background-image: linear-gradient(to right, #bfdbfe 0%, #dbeafe 20%, #bfdbfe 40%, #bfdbfe 100%);
+}
+
+/* Dark mode for sent skeleton bubbles */
+.dark .sent-bubble {
+    background-color: #3182ce; /* Tailwind blue-600 */
+    background-image: linear-gradient(to right, #3182ce 0%, #2b6cb0 20%, #3182ce 40%, #3182ce 100%); /* Tailwind blue-800 */
+  }
+                                      
