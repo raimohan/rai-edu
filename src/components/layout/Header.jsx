@@ -12,7 +12,7 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
     const { playClick } = useContext(AppContext);
 
     // आप अपने लोगो का URL यहाँ पेस्ट कर सकते हैं
-    const websiteLogoUrl = 'https://ibb.co/R448rd4C'; // <<< यहाँ अपने लोगो का URL पेस्ट करें
+    const websiteLogoUrl = 'https://ibb.co/whJV7tLw'; // <<< यहाँ अपने लोगो का URL पेस्ट करें
     // यदि आपके पास लोगो URL नहीं है, तो आप इसे null या एक डिफ़ॉल्ट आइकन रख सकते हैं
     // उदाहरण: const websiteLogoUrl = null;
 
@@ -55,17 +55,17 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
                 
                 {/* लोगो और RaiEdu शीर्षक को यहाँ जोड़ें */}
                 {/* इसे एक Link में लपेटें ताकि यह क्लिकेबल हो और डैशबोर्ड पर रीडायरेक्ट करे */}
-                <Link to="/dashboard" className="flex items-center gap-2"> {/* लोगो और टेक्स्ट के बीच गैप के लिए gap-2 */}
+                <Link to="/dashboard" className="flex items-center gap-2">
                     {websiteLogoUrl ? (
-                        <img src={websiteLogoUrl} alt="RaiEdu Logo" className="h-8 md:h-10 object-contain" /> {/* लोगो इमेज URL से */}
+                        // जब लोगो URL मौजूद हो, तो इमेज और टेक्स्ट दोनों दिखाएं
+                        <>
+                            <img src={websiteLogoUrl} alt="RaiEdu Logo" className="h-8 md:h-10 object-contain" />
+                            <span className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                                RaiEdu
+                            </span>
+                        </>
                     ) : (
-                        // यदि कोई URL नहीं है, तो एक डिफ़ॉल्ट टेक्स्ट या आइकन दिखाएं
-                        <span className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200"> {/* फ़ॉन्ट स्टाइल बदला नहीं गया है */}
-                            RaiEdu
-                        </span>
-                    )}
-                    {/* यदि आप लोगो के साथ "RaiEdu" टेक्स्ट भी दिखाना चाहते हैं और websiteLogoUrl null नहीं है */}
-                    {websiteLogoUrl && (
+                        // जब लोगो URL मौजूद न हो, तो केवल RaiEdu टेक्स्ट दिखाएं
                         <span className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
                             RaiEdu
                         </span>
