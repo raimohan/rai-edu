@@ -11,13 +11,7 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
     const location = useLocation();
     const { playClick } = useContext(AppContext);
 
-    // आप अपने लोगो का URL यहाँ पेस्ट कर सकते हैं
-    const websiteLogoUrl = 'https://ibb.co/whJV7tLw'; // <<< यहाँ अपने लोगो का URL पेस्ट करें
-    // यदि आपके पास लोगो URL नहीं है, तो आप इसे null या एक डिफ़ॉल्ट आइकन रख सकते हैं
-    // उदाहरण: const websiteLogoUrl = null;
-
     const isDashboard = location.pathname === '/dashboard' || location.pathname === '/';
-    
     const getPageTitle = (pathname) => {
         if (isDashboard) return 'Dashboard';
         const name = pathname.split('/').pop().replace(/-/g, ' ');
@@ -52,36 +46,10 @@ const Header = ({ toggleSidebar, notifications, setShowNotificationModal }) => {
         <header className="bg-white dark:bg-gray-800 p-4 shadow-sm z-10 flex items-center justify-between">
             <div className="flex items-center">
                 <button onClick={toggleSidebar} className="md:hidden mr-4 text-gray-600 dark:text-gray-300"><Menu size={24} /></button>
-                
-                {/* लोगो और RaiEdu शीर्षक को यहाँ जोड़ें */}
-                {/* इसे एक Link में लपेटें ताकि यह क्लिकेबल हो और डैशबोर्ड पर रीडायरेक्ट करे */}
-                <Link to="/dashboard" className="flex items-center gap-2">
-                    {websiteLogoUrl ? (
-                        // जब लोगो URL मौजूद हो, तो इमेज और टेक्स्ट दोनों दिखाएं
-                        <>
-                            <img src={websiteLogoUrl} alt="RaiEdu Logo" className="h-8 md:h-10 object-contain" />
-                            <span className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                                RaiEdu
-                            </span>
-                        </>
-                    ) : (
-                        // जब लोगो URL मौजूद न हो, तो केवल RaiEdu टेक्स्ट दिखाएं
-                        <span className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                            RaiEdu
-                        </span>
-                    )}
-                </Link>
-
-                {/* यह हिस्सा केवल तब दिखाएँ जब dashboard नहीं है (अन्य पेजों के लिए टाइटल) */}
-                {!isDashboard && <h2 className="ml-4 text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize">{pageTitle}</h2>}
+                {!isDashboard && <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize">{pageTitle}</h2>}
             </div>
-
-            <div className="flex items-center">
-                {isDashboard && (
-                    <h2 className="hidden md:block text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize mr-auto">
-                        Dashboard
-                    </h2>
-                )}
+            <div className={`${isDashboard ? 'w-full flex justify-between items-center' : ''}`}>
+                {isDashboard && <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-200 capitalize">Dashboard</h2>}
                 <HeaderIcons />
             </div>
         </header>
