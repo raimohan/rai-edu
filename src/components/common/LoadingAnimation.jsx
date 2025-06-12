@@ -1,120 +1,114 @@
 import React, { useContext } from 'react';
-import { ThemeContext } from '../../contexts/ThemeContext'; // Assuming this context provides theme colors
+import { ThemeContext } from '../../contexts/ThemeContext'; // आपकी थीम कॉन्टेक्स्ट यहाँ इंपोर्ट की गई है
 
 const LoadingAnimation = () => {
-    // We import ThemeContext, though for the plane color, we'll use a fixed light blue
-    // as per your request, allowing the theme to influence other aspects if needed.
+    // ThemeContext का उपयोग किया जा सकता है, हालाँकि 'R' और सर्कल्स का रंग
+    // सीधे कोड में निर्धारित किया गया है जैसा आपने अनुरोध किया था।
     const { theme } = useContext(ThemeContext);
 
-    // The specific light blue color for the paper plane.
-    const planeColor = '#ADD8E6';
+    // 'R' अक्षर और पॉप-आउट होने वाले सर्कल्स के लिए मुख्य नीला रंग
+    const mainBlueColor = '#1a73e8';
+    // सर्कल्स के लिए पारदर्शी नीला रंग
+    const transparentBlueColor = 'rgba(26, 115, 232, 0.5)';
 
     return (
-        // The main container, centered and taking full available height.
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            {/* CSS styles for the animations and elements are embedded here. */}
+        // मुख्य कंटेनर जो पूरी स्क्रीन को कवर करता है और लोडर को केंद्र में रखता है
+        <div className="flex items-center justify-center min-h-screen bg-transparent">
+            {/* CSS स्टाइल्स को यहाँ एम्बेड किया गया है */}
             <style>{`
-                /* Keyframes for the paper plane's subtle hovering movement */
-                @keyframes planeHover {
+                /* यह सुनिश्चित करता है कि सभी तत्व अपने पैडिंग और बॉर्डर को अपनी कुल चौड़ाई में शामिल करें */
+                * {
+                    box-sizing: border-box;
+                }
+
+                /* मुख्य लोडर कंटेनर जो R और सर्कल्स को रखता है */
+                .loader-container {
+                    position: relative; /* R और सर्कल्स को इसके सापेक्ष पोजीशन करने के लिए */
+                    width: 120px; /* लोडर के लिए निश्चित चौड़ाई */
+                    height: 120px; /* लोडर के लिए निश्चित ऊंचाई */
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+
+                /* एनिमेटेड 'R' अक्षर के लिए स्टाइलिंग */
+                .animated-r {
+                    position: relative; /* सर्कल्स के ऊपर रखने के लिए */
+                    font-size: 4.5rem; /* 'R' का साइज़ */
+                    font-weight: 900; /* अतिरिक्त बोल्ड */
+                    color: ${mainBlueColor}; /* गहरा नीला रंग */
+                    text-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); /* गहराई के लिए सूक्ष्म टेक्स्ट शैडो */
+                    z-index: 2; /* सुनिश्चित करें कि 'R' सर्कल्स के ऊपर हो */
+                    will-change: transform; /* स्मूद एनिमेशन के लिए हार्डवेयर त्वरण सक्षम करें */
+                    /* 'R' के लिए एक सूक्ष्म पल्स एनिमेशन */
+                    animation: pulse-r 2s ease-in-out infinite alternate;
+                }
+
+                /* 'R' के पल्स एनिमेशन के लिए Keyframes */
+                @keyframes pulse-r {
+                    0%, 100% { transform: scale(1); } /* सामान्य आकार */
+                    50% { transform: scale(1.03); } /* थोड़ा बड़ा करें */
+                }
+
+                /* पॉप-आउट होने वाले सर्कल्स के लिए सामान्य स्टाइलिंग */
+                .ripple-circle {
+                    position: absolute; /* लोडर कंटेनर के सापेक्ष पोजीशन करें */
+                    top: 50%; /* केंद्र से शुरू करें */
+                    left: 50%; /* केंद्र से शुरू करें */
+                    transform: translate(-50%, -50%); /* अपने केंद्र बिंदु पर पोजीशन करें */
+                    background-color: ${transparentBlueColor}; /* गहरा नीला रंग थोड़ी पारदर्शिता के साथ */
+                    border-radius: 50%; /* गोल आकार */
+                    z-index: 1; /* 'R' के पीछे रखें */
+                    animation: ripple-effect 2s infinite ease-out forwards; /* मुख्य रिपल एनिमेशन */
+                    will-change: transform, opacity; /* स्मूद एनिमेशन के लिए हार्डवेयर त्वरण सक्षम करें */
+                }
+
+                /* 'ripple-effect' एनिमेशन के लिए Keyframes */
+                @keyframes ripple-effect {
                     0% {
-                        transform: translate(-50%, -50%) rotate(-5deg); /* Start slightly rotated */
-                    }
-                    50% {
-                        transform: translate(-50%, -60%) rotate(5deg);  /* Move up and rotate */
+                        width: 0px; /* छोटे से शुरू करें */
+                        height: 0px;
+                        opacity: 1; /* पूरी तरह से अपारदर्शी */
                     }
                     100% {
-                        transform: translate(-50%, -50%) rotate(-5deg); /* Return to start position */
+                        width: 120px; /* अधिकतम आकार तक फैलाएं */
+                        height: 120px;
+                        opacity: 0; /* पूरी तरह से गायब हो जाएं */
                     }
                 }
 
-                /* Keyframes for clouds moving from right to left, simulating flight */
-                @keyframes cloudScroll {
-                    0% {
-                        transform: translateX(100vw); /* Start off-screen to the right */
-                        opacity: 0; /* Fully transparent */
-                    }
-                    5% {
-                        opacity: 1; /* Fade in as they enter the screen */
-                    }
-                    95% {
-                        opacity: 1; /* Stay fully visible while on screen */
-                    }
-                    100% {
-                        transform: translateX(-100vw); /* Move off-screen to the left */
-                        opacity: 0; /* Fade out as they leave */
-                    }
-                }
+                /* पहले रिपल सर्कल के लिए एनिमेशन में देरी */
+                .ripple-circle:nth-child(1) { animation-delay: 0s; }
+                /* दूसरे रिपल सर्कल के लिए एनिमेशन में देरी (पहले वाले के बीच में शुरू होता है) */
+                .ripple-circle:nth-child(2) { animation-delay: 1s; }
 
-                /* Basic styling for all cloud elements */
-                .cloud {
-                    background-color: white; /* White color for clouds */
-                    border-radius: 50%; /* Makes them circular */
-                    box-shadow: 0 0 10px rgba(0,0,0,0.05); /* Soft shadow for depth */
-                    position: absolute; /* Allows positioning relative to its parent */
-                    animation: cloudScroll linear infinite; /* Apply the scrolling animation */
-                }
-
-                /* Specific dimensions, animation durations, and delays for individual cloud instances.
-                   Negative delays make them appear to already be in motion when the animation starts,
-                   creating a continuous flow. */
-                .cloud-instance-1 {
-                    width: 70px; height: 40px;
-                    animation-duration: 20s;
-                    animation-delay: 0s;
-                    top: 20%; left: -10%; /* Initial position (off-screen left for continuous loop) */
-                }
-                .cloud-instance-2 {
-                    width: 50px; height: 30px;
-                    animation-duration: 18s;
-                    animation-delay: -5s;
-                    top: 50%; left: -20%;
-                }
-                .cloud-instance-3 {
-                    width: 90px; height: 50px;
-                    animation-duration: 22s;
-                    animation-delay: -10s;
-                    top: 70%; left: -5%;
-                }
-                .cloud-instance-4 {
-                    width: 60px; height: 35px;
-                    animation-duration: 19s;
-                    animation-delay: -15s;
-                    top: 35%; left: -25%;
-                }
-                .cloud-instance-5 {
-                    width: 80px; height: 45px;
-                    animation-duration: 21s;
-                    animation-delay: -20s;
-                    top: 10%; left: -30%;
+                /* छोटे स्क्रीन (जैसे मोबाइल) के लिए प्रतिक्रियाशील डिज़ाइन */
+                @media (max-width: 600px) {
+                    .loader-container {
+                        width: 100px; /* कंटेनर का आकार छोटा करें */
+                        height: 100px;
+                    }
+                    .animated-r {
+                        font-size: 4rem; /* 'R' का आकार और छोटा करें */
+                    }
+                    @keyframes ripple-effect {
+                        0% { width: 0px; height: 0px; opacity: 1; }
+                        100% { width: 100px; height: 100px; opacity: 0; } /* रिपल का अधिकतम आकार एडजस्ट करें */
+                    }
                 }
             `}</style>
 
-            {/* Container for the paper plane and clouds.
-                It has a relative position, fixed height, and hides overflowing content. */}
-            <div className="relative w-full h-48 overflow-hidden">
-                {/* Paper Plane SVG: Positioned absolutely in the center,
-                    with z-index to ensure it appears above the clouds. */}
-                <div className="absolute top-1/2 left-1/2 z-10" style={{ animation: 'planeHover 3s infinite ease-in-out' }}>
-                    {/* Inline SVG for a clean, scalable paper plane icon.
-                        Fill and stroke are set to the defined light blue color. */}
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill={planeColor} stroke={planeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </div>
-
-                {/* Cloud elements: Multiple div elements, each with a unique
-                    `cloud-instance` class to apply varying sizes, positions,
-                    and animation delays for a dynamic cloud background. */}
-                <div className="cloud cloud-instance-1"></div>
-                <div className="cloud cloud-instance-2"></div>
-                <div className="cloud cloud-instance-3"></div>
-                <div className="cloud cloud-instance-4"></div>
-                <div className="cloud cloud-instance-5"></div>
+            {/* मुख्य लोडर कंटेनर */}
+            <div className="loader-container">
+                {/* पहला पॉप-आउट होने वाला सर्कल */}
+                <div className="ripple-circle"></div>
+                {/* दूसरा पॉप-आउट होने वाला सर्कल (पहले वाले के बाद) */}
+                <div className="ripple-circle"></div>
+                {/* आपका एनिमेटेड 'R' अक्षर */}
+                <div className="animated-r">R</div>
             </div>
         </div>
     );
 };
 
 export default LoadingAnimation;
-                
