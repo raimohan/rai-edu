@@ -1,5 +1,3 @@
-// src/pages/CommunityPage.jsx
-
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -34,20 +32,24 @@ const CommunityPage = () => {
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
+    const [pageMessage, setPageMessage] = useState(''); // To display page-level messages like errors
 
     useEffect(() => {
         if (!db) {
-            setLoading(false); // Stop loading if db is not available
+            setLoading(false);
+            setPageMessage("Firebase Database not initialized.");
             return;
         }
         const q = query(collection(db, 'community_messages'), orderBy('timestamp', 'asc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: doc.data().timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'now' }));
             setMessages(fetchedMessages);
-            setLoading(false); // Set loading to false once messages are fetched
+            setLoading(false); // Messages fetched, stop initial loading
+            setPageMessage(''); // Clear any previous messages
         }, (error) => {
             console.error("Error fetching community messages:", error);
-            setLoading(false); // Set loading to false on error
+            setLoading(false);
+            setPageMessage(`Failed to load messages: ${error.message}`);
         });
         return unsubscribe;
     }, [db]);
@@ -57,70 +59,78 @@ const CommunityPage = () => {
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if ((!newMessage.trim() && !file) || !currentUser || !db) return;
-
-        setLoading(true); // Temporarily set loading to disable input while sending, will be false after message is processed
-        let fileUrl = null;
-        let fileName = null;
-
-        if (file) {
-            setIsUploading(true);
-            const storage = getStorage();
-            const storageRef = ref(storage, `community_files/${currentUser.uid}/${Date.now()}_${file.name}`);
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            uploadTask.on('state_changed',
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    setUploadProgress(progress);
-                },
-                (error) => {
-                    console.error("File upload failed:", error);
-                    setIsUploading(false);
-                    setUploadProgress(0);
-                    // setMessage(`Error uploading file: ${error.message}`); // If you have a message state
-                    setLoading(false);
-                },
-                async () => {
-                    fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
-                    fileName = file.name;
-                    setIsUploading(false);
-                    setUploadProgress(0);
-                    await sendMessageToFirestore(fileUrl, fileName);
-                    setLoading(false); // Done sending
-                }
-            );
-        } else {
-            await sendMessageToFirestore(null, null);
-            setLoading(false); // Done sending
+        setPageMessage(''); // Clear previous error messages
+        if ((!newMessage.trim() && !file) || !currentUser || !db) {
+            console.log("Cannot send empty message or user/db not ready.");
+            setPageMessage("Message cannot be empty."); // Provide feedback
+            return;
         }
-    };
 
-    const sendMessageToFirestore = async (fileUrl, fileName) => {
+        const messageToSend = {
+            userId: currentUser.uid,
+            username: currentUser.displayName || currentUser.email.split('@')[0],
+            messageText: newMessage.trim(),
+            fileUrl: null,
+            fileName: null,
+            timestamp: serverTimestamp(),
+        };
+
+        setNewMessage(''); // Clear input immediately for better UX
+        setFile(null); // Clear selected file immediately
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ""; // Clear file input element
+        }
+        setIsUploading(false); // Reset in case it was stuck
+        setUploadProgress(0);
+
         try {
-            await addDoc(collection(db, 'community_messages'), {
-                userId: currentUser.uid,
-                username: currentUser.displayName || currentUser.email.split('@')[0],
-                messageText: newMessage.trim(),
-                fileUrl: fileUrl,
-                fileName: fileName,
-                timestamp: serverTimestamp(),
-            });
-            setNewMessage('');
-            setFile(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
+            if (file) {
+                setIsUploading(true);
+                const storage = getStorage();
+                const storageRef = ref(storage, `community_files/${currentUser.uid}/${Date.now()}_${file.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, file);
+
+                await new Promise((resolve, reject) => {
+                    uploadTask.on('state_changed',
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            setUploadProgress(progress);
+                        },
+                        (error) => {
+                            console.error("File upload failed:", error);
+                            setPageMessage(`Error uploading file: ${error.message}`);
+                            setIsUploading(false); // Important: reset this on error
+                            reject(error);
+                        },
+                        async () => {
+                            messageToSend.fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                            messageToSend.fileName = file.name;
+                            setIsUploading(false); // Important: reset this on success
+                            resolve();
+                        }
+                    );
+                });
             }
+
+            // Now, add the message (with or without file) to Firestore
+            await addDoc(collection(db, 'community_messages'), messageToSend);
+            console.log("Message sent successfully!");
+            // setPageMessage("Message sent!"); // Optional success message
+
         } catch (error) {
-            console.error("Error sending message:", error);
-            // setMessage(`Error sending message: ${error.message}`);
+            console.error("Error sending message to Firestore:", error);
+            setPageMessage(`Failed to send message: ${error.message}`);
+            // If file upload failed, isUploading would already be false from above
+        } finally {
+            // No need to set loading here, as it primarily manages initial fetch,
+            // and input disablement is via `isUploading`
         }
     };
 
     const handleFileChange = (e) => {
         if (e.target.files[0]) {
             setFile(e.target.files[0]);
-            // setMessage('');
+            setPageMessage('');
         }
     };
 
@@ -144,19 +154,36 @@ const CommunityPage = () => {
     };
 
     const confirmDeletion = async () => {
-        if (!itemToDelete || !db) return;
-
-        if (itemToDelete.type === 'message') {
-            await deleteDoc(doc(db, "community_messages", itemToDelete.id));
-        } else if (itemToDelete.type === 'full_chat') {
-            setLoading(true);
-            const snapshot = await getDocs(collection(db, 'community_messages'));
-            const batch = writeBatch(db);
-            snapshot.docs.forEach((d) => batch.delete(d.ref));
-            await batch.commit();
+        setShowConfirmModal(false); // Close modal immediately
+        setPageMessage(''); // Clear previous messages
+        
+        if (!itemToDelete || !db) {
+            setPageMessage("Deletion failed: Item not specified or DB not ready.");
+            return;
         }
-        setShowConfirmModal(false);
-        setItemToDelete(null);
+
+        try {
+            if (itemToDelete.type === 'message') {
+                await deleteDoc(doc(db, "community_messages", itemToDelete.id));
+                console.log("Message deleted successfully!");
+                // setPageMessage("Message deleted!");
+            } else if (itemToDelete.type === 'full_chat') {
+                setLoading(true); // Start loading while clearing
+                const snapshot = await getDocs(collection(db, 'community_messages'));
+                const batch = writeBatch(db);
+                snapshot.docs.forEach((d) => batch.delete(d.ref));
+                await batch.commit();
+                console.log("All messages cleared successfully!");
+                // setPageMessage("Chat cleared!");
+                setLoading(false); // Explicitly stop loading after clearing
+            }
+        } catch (error) {
+            console.error("Error during deletion:", error);
+            setPageMessage(`Deletion failed: ${error.message}`);
+            setLoading(false); // Stop loading on error
+        } finally {
+            setItemToDelete(null); // Clear item to delete regardless of success/failure
+        }
     };
 
     return (
@@ -169,8 +196,13 @@ const CommunityPage = () => {
                     </ThemedButton>
                 )}
             </div>
+            {pageMessage && ( // Display page-level messages/errors
+                <div className={`mb-4 text-center p-2 rounded-md ${pageMessage.includes('Error') || pageMessage.includes('failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    {pageMessage}
+                </div>
+            )}
             <div className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900/50 p-4 rounded-xl shadow-inner overflow-y-auto mb-4 custom-scrollbar">
-                {loading && messages.length === 0 ? ( // Only show skeleton if initial load AND no messages yet
+                {loading && messages.length === 0 ? (
                     <div className="flex flex-col gap-4 w-full h-full justify-center items-center p-4">
                         {/* Skeleton messages for chat history loading */}
                         <div className="skeleton-bubble received-bubble w-3/4"></div>
@@ -213,9 +245,7 @@ const CommunityPage = () => {
                                             )}
                                         </div>
                                     )}
-                                    <div className={`text-xs mt-1.5 text-right ${isCurrentUser ? 'text-gray-200/70' : 'text-gray-500/70'}`}>
-                                        {msg.timestamp}
-                                    </div>
+                                    <div className={`text-xs mt-1.5 text-right ${isCurrentUser ? 'text-gray-200/70' : 'text-gray-500/70'}`}>{msg.timestamp}</div>
                                 </div>
                                 {(isCurrentUser || isAdmin) && (
                                     <button onClick={() => handleDeleteClick(msg.id)} className="text-red-400 opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
@@ -295,4 +325,3 @@ const CommunityPage = () => {
 };
 
 export default CommunityPage;
-        
